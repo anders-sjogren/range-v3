@@ -26,16 +26,15 @@ namespace ranges
 {
     inline namespace v3
     {
-        /// \addtogroup group-algorithms
-        /// @{
-        struct for_each_fn
+        /// \cond
+        namespace adl_detail
         {
             template<typename I, typename S, typename F, typename P = ident,
                 typename V = iterator_value_t<I>,
                 typename X = concepts::Invokable::result_t<P, V>,
                 CONCEPT_REQUIRES_(InputIterator<I>() && IteratorRange<I, S>() &&
                     Invokable<P, V>() && Invokable<F, X>())>
-            I operator()(I begin, S end, F fun_, P proj_ = P{}) const
+            I for_each(I begin, S end, F fun_, P proj_ = P{})
             {
                 auto &&fun = invokable(fun_);
                 auto &&proj = invokable(proj_);
@@ -52,17 +51,25 @@ namespace ranges
                 typename X = concepts::Invokable::result_t<P, V>,
                 CONCEPT_REQUIRES_(InputIterable<Rng &>() && Invokable<P, V>() &&
                     Invokable<F, X>())>
-            I operator()(Rng &&rng, F fun, P proj = P{}) const
+            I for_each(Rng &&rng, F fun, P proj = P{})
             {
-                return (*this)(begin(rng), end(rng), std::move(fun), std::move(proj));
+                return for_each(begin(rng), end(rng), std::move(fun), std::move(proj));
             }
-        };
 
-        /// \sa `for_each_fn`
+            struct for_each_fn
+            {
+                template <typename... Args>
+                constexpr auto operator()(Args&&... args) const ->
+                decltype(for_each(std::forward<Args>(args)...))
+                {
+                    return for_each(std::forward<Args>(args)...);
+                }
+            };
+        }
+        /// \endcond
+
         /// \ingroup group-algorithms
-        constexpr for_each_fn for_each{};
-
-        /// @}
+        constexpr adl_detail::for_each_fn for_each{};
     } // namespace v3
 } // namespace ranges
 
