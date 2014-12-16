@@ -1,3 +1,4 @@
+/// \file
 // Range v3 library
 //
 //  Copyright Eric Niebler 2013-2014
@@ -61,8 +62,7 @@ namespace ranges
                     semiregular_invokable_ref_t<Fun, IsConst> fun_;
                     bool operator()(range_iterator_t<Rng> cur) const
                     {
-                        return zero_ && cur == first_ ? true :
-                            cur == last_ ? false : !fun_(cur, last_).first;
+                        return (zero_ && cur == first_) || (cur != last_ && !fun_(cur, last_).first);
                     }
                 };
                 using reference_ =
@@ -240,7 +240,7 @@ namespace ranges
             #endif
             };
 
-            /// \sa `split_fn`
+            /// \relates split_fn
             /// \ingroup group-views
             constexpr view<split_fn> split{};
         }

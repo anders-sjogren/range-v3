@@ -1,3 +1,4 @@
+/// \file
 // Range v3 library
 //
 //  Copyright Eric Niebler 2013-2014
@@ -29,6 +30,7 @@ namespace ranges
     {
         /// \addtogroup group-views
         /// @{
+        // BUGBUG should this be called adjacent_remove_if?
         template<typename Rng, typename F>
         struct adjacent_filter_view
           : range_adaptor<adjacent_filter_view<Rng, F>, Rng>
@@ -109,7 +111,7 @@ namespace ranges
             #endif
             };
 
-            /// \sa `adjacent_filter_fn`
+            /// \relates adjacent_filter_fn
             /// \ingroup group-views
             constexpr view<adjacent_filter_fn> adjacent_filter{};
         }
