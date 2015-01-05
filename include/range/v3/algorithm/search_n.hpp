@@ -38,7 +38,7 @@ namespace ranges
     {
         /// ingroup group-concepts
         template<typename I, typename V, typename C = equal_to, typename P = ident,
-            typename IV = iterator_value_t<I>,
+            typename IV = iterator_common_reference_t<I>,
             typename X1 = concepts::Invokable::result_t<P, IV>>
         using Searchnable = meta::fast_and<
             ForwardIterator<I>,
@@ -144,7 +144,7 @@ namespace ranges
                     {
                         if(++c == count)  // If pattern exhausted, begin is the answer (works for 1 element pattern)
                             return begin;
-                        if(++m == end)  // Otherwise if source exhaused, pattern not found
+                        if(++m == end)  // Otherwise if source exhausted, pattern not found
                             return m;
                         if(!pred(proj(*m), val))  // if there is a mismatch, restart with a new begin
                         {

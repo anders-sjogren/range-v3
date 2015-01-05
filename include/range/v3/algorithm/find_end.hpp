@@ -115,7 +115,7 @@ namespace ranges
                 --l2;
                 while(true)
                 {
-                    // Find end element in sequence 1 that matchs *(end2-1), with a mininum of loop checks
+                    // Find end element in sequence 1 that matches *(end2-1), with a mininum of loop checks
                         // return end1 if no element matches *begin2
                     do  if(begin1 == l1) return end1;
                     while(!pred(proj(*--l1), *l2));
@@ -124,7 +124,7 @@ namespace ranges
                     I2 m2 = l2;
                         // If pattern exhausted, m1 is the answer (works for 1 element pattern)
                     do  if(m2 == begin2) return m1;
-                        // Otherwise if source exhaused, pattern not found
+                        // Otherwise if source exhausted, pattern not found
                         else if(m1 == begin1) return end1;
                         // if there is a mismatch, restart with a new l1
                         // else there is a match, check next elements
@@ -165,8 +165,8 @@ namespace ranges
         public:
             template<typename I1, typename S1, typename I2, typename S2, typename R = equal_to,
                 typename P = ident,
-                typename V1 = iterator_value_t<I1>,
-                typename V2 = iterator_value_t<I2>,
+                typename V1 = iterator_common_reference_t<I1>,
+                typename V2 = iterator_common_reference_t<I2>,
                 typename X = concepts::Invokable::result_t<P, V1>,
                 CONCEPT_REQUIRES_(
                     ForwardIterator<I1>() && IteratorRange<I1, S1>() &&
@@ -187,8 +187,8 @@ namespace ranges
             template<typename Rng1, typename Rng2, typename R = equal_to, typename P = ident,
                 typename I1 = range_iterator_t<Rng1>,
                 typename I2 = range_iterator_t<Rng2 const>,
-                typename V1 = iterator_value_t<I1>,
-                typename V2 = iterator_value_t<I2>,
+                typename V1 = iterator_common_reference_t<I1>,
+                typename V2 = iterator_common_reference_t<I2>,
                 typename X = concepts::Invokable::result_t<P, V1>,
                 CONCEPT_REQUIRES_(
                     ForwardIterable<Rng1>() &&

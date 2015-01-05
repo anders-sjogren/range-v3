@@ -22,7 +22,9 @@
 #include <type_traits>
 #include <range/v3/range_fwd.hpp>
 #include <range/v3/utility/meta.hpp>
-#include <range/v3/utility/tuple_algorithm.hpp>
+#include <range/v3/utility/move.hpp>
+#include <range/v3/utility/associated_types.hpp>
+#include <range/v3/utility/integer_sequence.hpp>
 
 namespace ranges
 {
@@ -114,18 +116,18 @@ namespace ranges
                 noexcept(meta::and_c<is_nothrow_swappable<Ts, Us>::value...>::value)
             {
                 adl_swap_detail::tuple_swap_(std::move(left), std::move(right),
-                    tuple_indices_t<std::tuple<Ts...>>{});
+                    make_index_sequence<sizeof...(Ts)>{});
             }
 
             // Q: Should std::reference_wrapper be considered a proxy wrt swapping rvalues?
             // A: No. Its operator= is currently defined to reseat the references, so
             //    std::swap(ra, rb) already means something when ra and rb are (lvalue)
             //    reference_wrappers. That reseats the reference wrappers but leaves the
-            //    referants unmodified. Treating rvalue reference_wrappers differently would
+            //    referents unmodified. Treating rvalue reference_wrappers differently would
             //    be confusing.
 
             // Q: Then why is it OK to "re"-define swap for pairs and tuples of references?
-            // A: Because as defined above, swapping an rvalue tuple of refences has the same
+            // A: Because as defined above, swapping an rvalue tuple of references has the same
             //    semantics as swapping an lvalue tuple of references. Rather than reseat the
             //    references, assignment happens *through* the references.
 
@@ -141,6 +143,18 @@ namespace ranges
             indirect_swap(Readable0 a, Readable1 b)
                 noexcept(is_nothrow_swappable<decltype(*std::declval<Readable0>()),
                                               decltype(*std::declval<Readable1>())>::value);
+
+            template<typename Readable0, typename Readable1>
+            typename std::enable_if<
+                !is_swappable<
+                    decltype(*std::declval<Readable0>()),
+                    decltype(*std::declval<Readable1>())>::value &&
+                is_indirectly_movable<Readable0, Readable1>::value &&
+                is_indirectly_movable<Readable1, Readable0>::value>::type
+            indirect_swap(Readable0 a, Readable1 b)
+                noexcept(
+                    is_nothrow_indirectly_movable<Readable0, Readable1>::value &&
+                    is_nothrow_indirectly_movable<Readable0, Readable1>::value);
 
             struct indirect_swap_fn
             {
@@ -186,6 +200,23 @@ namespace ranges
                                               decltype(*std::declval<Readable1>())>::value)
             {
                 swap(*a, *b);
+            }
+
+            template<typename Readable0, typename Readable1>
+            typename std::enable_if<
+                !is_swappable<
+                    decltype(*std::declval<Readable0>()),
+                    decltype(*std::declval<Readable1>())>::value &&
+                is_indirectly_movable<Readable0, Readable1>::value &&
+                is_indirectly_movable<Readable1, Readable0>::value>::type
+            indirect_swap(Readable0 a, Readable1 b)
+                noexcept(
+                    is_nothrow_indirectly_movable<Readable0, Readable1>::value &&
+                    is_nothrow_indirectly_movable<Readable0, Readable1>::value)
+            {
+                meta::eval<value_type<Readable0>> v0 = indirect_move(a);
+                *a = indirect_move(b);
+                *b = std::move(v0);
             }
         }
         /// \endcond

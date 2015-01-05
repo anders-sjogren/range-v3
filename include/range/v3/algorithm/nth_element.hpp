@@ -46,7 +46,7 @@ namespace ranges
             // stable, 2-3 compares, 0-2 swaps
 
             template<typename I, typename C, typename P,
-                typename V = iterator_value_t<I>,
+                typename V = iterator_common_reference_t<I>,
                 typename X = concepts::Function::result_t<P, V>,
                 CONCEPT_REQUIRES_(ForwardIterator<I>() && Function<P, V>() && Relation<C, X>())>
             unsigned sort3(I x, I y, I z, C &pred, P &proj)
@@ -84,7 +84,7 @@ namespace ranges
 
             // Assumes size > 0
             template<typename I, typename C, typename P,
-                typename V = iterator_value_t<I>,
+                typename V = iterator_common_reference_t<I>,
                 typename X = concepts::Function::result_t<P, V>,
                 CONCEPT_REQUIRES_(BidirectionalIterator<I>() && Function<P, V>() && Relation<C, X>())>
             void selection_sort(I begin, I end, C &pred, P &proj)
@@ -200,7 +200,7 @@ namespace ranges
                                 // The begin part is sorted,
                                 if(nth < i)
                                     return end_orig;
-                                // nth_element the secod part
+                                // nth_element the second part
                                 // nth_element<C>(i, nth, end, pred);
                                 begin = i;
                                 goto restart;
