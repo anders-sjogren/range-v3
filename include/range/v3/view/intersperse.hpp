@@ -24,8 +24,10 @@
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_adaptor.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/view.hpp>
 
 namespace ranges
@@ -76,8 +78,8 @@ namespace ranges
                         --it;
                 }
                 CONCEPT_REQUIRES(RandomAccessIterable<Rng>())
-                range_difference_t<Rng> distance_to(range_iterator_t<Rng> it, range_iterator_t<Rng> other_it,
-                    cursor_adaptor const &other) const
+                range_difference_t<Rng> distance_to(range_iterator_t<Rng> it,
+                    range_iterator_t<Rng> other_it, cursor_adaptor const &other) const
                 {
                     auto d = other_it - it;
                     if(d > 0)
@@ -118,8 +120,8 @@ namespace ranges
             }
         public:
             intersperse_view() = default;
-            intersperse_view(Rng && rng, range_value_t<Rng> val)
-              : range_adaptor_t<intersperse_view>{std::forward<Rng>(rng)}, val_(std::move(val))
+            intersperse_view(Rng rng, range_value_t<Rng> val)
+              : range_adaptor_t<intersperse_view>{std::move(rng)}, val_(std::move(val))
             {}
             CONCEPT_REQUIRES(SizedIterable<Rng>())
             range_size_t<Rng> size() const
@@ -151,9 +153,9 @@ namespace ranges
 
                 template<typename Rng,
                     CONCEPT_REQUIRES_(Concept<Rng>())>
-                intersperse_view<Rng> operator()(Rng && rng, range_value_t<Rng> val) const
+                intersperse_view<all_t<Rng>> operator()(Rng && rng, range_value_t<Rng> val) const
                 {
-                    return {std::forward<Rng>(rng), {std::move(val)}};
+                    return {all(std::forward<Rng>(rng)), {std::move(val)}};
                 }
 
             #ifndef RANGES_DOXYGEN_INVOKED
@@ -178,10 +180,12 @@ namespace ranges
             #endif
             };
 
-
             /// \relates intersperse_fn
             /// \ingroup group-views
-            constexpr view<intersperse_fn> intersperse{};
+            namespace
+            {
+                constexpr auto&& intersperse = static_const<view<intersperse_fn>>::value;
+            }
         }
     }
 }

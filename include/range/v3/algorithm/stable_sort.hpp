@@ -49,11 +49,11 @@
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/counted_iterator.hpp>
 #include <range/v3/algorithm/merge_move.hpp>
 #include <range/v3/algorithm/sort.hpp>
 #include <range/v3/algorithm/inplace_merge.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -157,7 +157,7 @@ namespace ranges
             {
                 auto && pred = invokable(pred_);
                 auto && proj = invokable(proj_);
-                I end = next_to(begin, end_);
+                I end = ranges::next(begin, end_);
                 using D = iterator_difference_t<I>;
                 using V = iterator_value_t<I>;
                 D len = end - begin;
@@ -181,7 +181,10 @@ namespace ranges
 
         /// \sa `stable_sort_fn`
         /// \ingroup group-algorithms
-        constexpr stable_sort_fn stable_sort {};
+        namespace
+        {
+            constexpr auto&& stable_sort = static_const<stable_sort_fn>::value;
+        }
 
         /// @}
     } // namespace v3

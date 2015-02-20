@@ -21,6 +21,7 @@
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -31,13 +32,8 @@ namespace ranges
         struct all_of_fn
         {
             template<typename I, typename S, typename F, typename P = ident,
-                typename V = iterator_common_reference_t<I>,
-                typename X = concepts::Invokable::result_t<P, V>,
-                CONCEPT_REQUIRES_(
-                    InputIterator<I>() && IteratorRange<I, S>() &&
-                    Invokable<P, V>() &&
-                    InvokablePredicate<F, X>()
-                )>
+                CONCEPT_REQUIRES_(InputIterator<I>() && IteratorRange<I, S>() &&
+                    IndirectInvokablePredicate<F, Project<I, P> >())>
             bool
             operator()(I first, S last, F pred, P proj = P{}) const
             {
@@ -51,13 +47,7 @@ namespace ranges
 
             template<typename Rng, typename F, typename P = ident,
                 typename I = range_iterator_t<Rng>,
-                typename V = iterator_common_reference_t<I>,
-                typename X = concepts::Invokable::result_t<P, V>,
-                CONCEPT_REQUIRES_(
-                    InputIterable<Rng>() &&
-                    Invokable<P, V>() &&
-                    InvokablePredicate<F, X>()
-                )>
+                CONCEPT_REQUIRES_(InputIterable<Rng>() && IndirectInvokablePredicate<F, Project<I, P> >())>
             bool
             operator()(Rng &&rng, F pred, P proj = P{}) const
             {
@@ -67,7 +57,10 @@ namespace ranges
 
         /// \sa `all_of_fn`
         /// \ingroup group-algorithms
-        constexpr with_braced_init_args<all_of_fn> all_of {};
+        namespace
+        {
+            constexpr auto&& all_of = static_const<with_braced_init_args<all_of_fn>>::value;
+        }
 
         /// @}
 

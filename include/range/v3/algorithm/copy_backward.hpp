@@ -21,6 +21,7 @@
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -30,37 +31,39 @@ namespace ranges
         /// @{
         struct copy_backward_fn
         {
-            template<typename I, typename S, typename O, typename P = ident,
+            template<typename I, typename S, typename O,
                 CONCEPT_REQUIRES_(
                     BidirectionalIterator<I>() && IteratorRange<I, S>() &&
                     BidirectionalIterator<O>() &&
-                    IndirectlyCopyable<I, O, P>()
+                    IndirectlyCopyable<I, O>()
                 )>
-            std::pair<I, O> operator()(I begin, S end_, O out, P proj = P{}) const
+            std::pair<I, O> operator()(I begin, S end_, O out) const
             {
-                auto &&iproj = invokable(proj);
-                I i = next_to(begin, end_), end = i;
+                I i = ranges::next(begin, end_), end = i;
                 while(begin != i)
-                    *--out = iproj(*--i);
+                    *--out = *--i;
                 return {end, out};
             }
 
-            template<typename Rng, typename O, typename P = ident,
+            template<typename Rng, typename O,
                 typename I = range_iterator_t<Rng>,
                 CONCEPT_REQUIRES_(
                     BidirectionalIterable<Rng &>() &&
                     BidirectionalIterator<O>() &&
-                    IndirectlyCopyable<I, O, P>()
+                    IndirectlyCopyable<I, O>()
                 )>
-            std::pair<I, O> operator()(Rng &rng, O out, P proj = P{}) const
+            std::pair<I, O> operator()(Rng &rng, O out) const
             {
-                return (*this)(begin(rng), end(rng), std::move(out), std::move(proj));
+                return (*this)(begin(rng), end(rng), std::move(out));
             }
         };
 
         /// \sa `copy_backward_fn`
         /// \ingroup group-algorithms
-        constexpr copy_backward_fn copy_backward {};
+        namespace
+        {
+            constexpr auto&& copy_backward = static_const<copy_backward_fn>::value;
+        }
 
         /// @}
     } // namespace v3

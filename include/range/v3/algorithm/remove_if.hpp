@@ -17,25 +17,23 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/algorithm/find_if.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename C, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename C, typename P = ident>
         using RemovableIf = meta::fast_and<
             ForwardIterator<I>,
-            Invokable<P, V>,
-            InvokablePredicate<C, X>,
+            IndirectInvokablePredicate<C, Project<I, P>>,
             Permutable<I>>;
 
         /// \addtogroup group-algorithms
@@ -74,7 +72,10 @@ namespace ranges
 
         /// \sa `remove_if_fn`
         /// \ingroup group-algorithms
-        constexpr remove_if_fn remove_if{};
+        namespace
+        {
+            constexpr auto&& remove_if = static_const<remove_if_fn>::value;
+        }
 
         /// @}
     } // namespace v3

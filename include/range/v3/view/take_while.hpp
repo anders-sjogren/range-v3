@@ -21,10 +21,10 @@
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_adaptor.hpp>
 #include <range/v3/utility/meta.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/semiregular.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
-#include <range/v3/utility/iterator_concepts.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/view.hpp>
 
 namespace ranges
@@ -39,17 +39,17 @@ namespace ranges
         {
         private:
             friend range_access;
-            semiregular_invokable_t<Pred> pred_;
+            semiregular_t<invokable_t<Pred>> pred_;
 
             template<bool IsConst>
             struct sentinel_adaptor
               : adaptor_base
             {
             private:
-                semiregular_invokable_ref_t<Pred, IsConst> pred_;
+                semiregular_ref_or_val_t<invokable_t<Pred>, IsConst> pred_;
             public:
                 sentinel_adaptor() = default;
-                sentinel_adaptor(semiregular_invokable_ref_t<Pred, IsConst> pred)
+                sentinel_adaptor(semiregular_ref_or_val_t<invokable_t<Pred>, IsConst> pred)
                   : pred_(std::move(pred))
                 {}
                 bool empty(range_iterator_t<Rng> it, range_sentinel_t<Rng> end) const
@@ -58,7 +58,6 @@ namespace ranges
                 }
             };
 
-            CONCEPT_REQUIRES(!Invokable<Pred const, range_common_reference_t<Rng>>())
             sentinel_adaptor<false> end_adaptor()
             {
                 return {pred_};
@@ -70,8 +69,8 @@ namespace ranges
             }
         public:
             take_while_view() = default;
-            take_while_view(Rng && rng, Pred pred)
-              : range_adaptor_t<take_while_view>{std::forward<Rng>(rng)}
+            take_while_view(Rng rng, Pred pred)
+              : range_adaptor_t<take_while_view>{std::move(rng)}
               , pred_(invokable(std::move(pred)))
             {}
         };
@@ -93,13 +92,13 @@ namespace ranges
                 template<typename Rng, typename Pred>
                 using Concept = meta::and_<
                     InputIterable<Rng>,
-                    InvokablePredicate<Pred, range_common_reference_t<Rng>>>;
+                    IndirectInvokablePredicate<Pred, range_iterator_t<Rng>>>;
 
                 template<typename Rng, typename Pred,
                     CONCEPT_REQUIRES_(Concept<Rng, Pred>())>
-                take_while_view<Rng, Pred> operator()(Rng && rng, Pred pred) const
+                take_while_view<all_t<Rng>, Pred> operator()(Rng && rng, Pred pred) const
                 {
-                    return {std::forward<Rng>(rng), std::move(pred)};
+                    return {all(std::forward<Rng>(rng)), std::move(pred)};
                 }
             #ifndef RANGES_DOXYGEN_INVOKED
                 template<typename Rng, typename Pred,
@@ -109,7 +108,7 @@ namespace ranges
                     CONCEPT_ASSERT_MSG(InputIterable<Rng>(),
                         "The object on which view::take_while operates must be a model of the "
                         "InputIterable concept.");
-                    CONCEPT_ASSERT_MSG(InvokablePredicate<Pred, range_common_reference_t<Rng>>(),
+                    CONCEPT_ASSERT_MSG(IndirectInvokablePredicate<Pred, range_iterator_t<Rng>>(),
                         "The function passed to view::take_while must be callable with objects of "
                         "the range's common reference type, and its result type must be "
                         "convertible to bool.");
@@ -119,7 +118,10 @@ namespace ranges
 
             /// \relates take_while_fn
             /// \ingroup group-views
-            constexpr view<take_while_fn> take_while{};
+            namespace
+            {
+                constexpr auto&& take_while = static_const<view<take_while_fn>>::value;
+            }
         }
         /// @}
     }

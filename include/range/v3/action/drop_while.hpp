@@ -23,6 +23,7 @@
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -50,8 +51,7 @@ namespace ranges
                     auto requires_(Rng rng, Fun f) -> decltype(
                         concepts::valid_expr(
                             concepts::model_of<concepts::ForwardIterable, Rng>(),
-                            concepts::model_of<concepts::InvokablePredicate, Fun,
-                                range_common_reference_t<Rng>>(),
+                            concepts::is_true(IndirectInvokablePredicate<Fun, range_iterator_t<Rng>>{}),
                             concepts::model_of<concepts::EraseableIterable, Rng, I, I>()
                         ));
                 };
@@ -77,7 +77,7 @@ namespace ranges
                     CONCEPT_ASSERT_MSG(ForwardIterable<Rng>(),
                         "The object on which action::drop_while operates must be a model of the "
                         "ForwardIterable concept.");
-                    CONCEPT_ASSERT_MSG(InvokablePredicate<Fun, range_common_reference_t<Rng>>(),
+                    CONCEPT_ASSERT_MSG(IndirectInvokablePredicate<Fun, range_iterator_t<Rng>>(),
                         "The function passed to action::drop_while must be callable with objects "
                         "of the range's common reference type, and it must return something convertible to "
                         "bool.");
@@ -92,7 +92,10 @@ namespace ranges
             /// \ingroup group-actions
             /// \relates drop_while_fn
             /// \sa action
-            constexpr action<drop_while_fn> drop_while{};
+            namespace
+            {
+                constexpr auto&& drop_while = static_const<action<drop_while_fn>>::value;
+            }
         }
         /// @}
     }

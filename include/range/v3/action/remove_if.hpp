@@ -21,6 +21,7 @@
 #include <range/v3/action/action.hpp>
 #include <range/v3/action/erase.hpp>
 #include <range/v3/algorithm/remove_if.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -80,12 +81,10 @@ namespace ranges
                     CONCEPT_ASSERT_MSG(EraseableIterable<Rng, I, I>(),
                         "The object on which action::remove_if operates must allow element "
                         "removal.");
-                    using V = iterator_common_reference_t<I>;
-                    CONCEPT_ASSERT_MSG(Invokable<P, V>(),
-                        "The projection argument passed to action::remove_if must accept objects "
-                        "of the range's common reference type.");
-                    using X = concepts::Invokable::result_t<P, V>;
-                    CONCEPT_ASSERT_MSG(InvokablePredicate<C, X>(),
+                    CONCEPT_ASSERT_MSG(Projectable<I, P>(),
+                        "The projection function must accept objects of the iterator's value type, "
+                        "reference type, and rvalue reference type.");
+                    CONCEPT_ASSERT_MSG(IndirectInvokablePredicate<C, Project<I, P>>(),
                         "The predicate passed to action::remove_if must accept objects returned "
                         "by the projection function, or of the range's value type if no projection "
                         "is specified.");
@@ -100,7 +99,10 @@ namespace ranges
             /// \ingroup group-actions
             /// \sa action
             /// \sa with_braced_init_args
-            constexpr action<remove_if_fn> remove_if{};
+            namespace
+            {
+                constexpr auto&& remove_if = static_const<action<remove_if_fn>>::value;
+            }
         }
         /// @}
     }

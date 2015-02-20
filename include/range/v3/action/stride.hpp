@@ -21,6 +21,7 @@
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -72,8 +73,8 @@ namespace ranges
                         S const end = ranges::end(rng);
                         if(begin != end)
                         {
-                            for(I i = next_bounded(++begin, step-1, end); i != end;
-                                advance_bounded(i, step, end), ++begin)
+                            for(I i = ranges::next(++begin, step-1, end); i != end;
+                                advance(i, step, end), ++begin)
                             {
                                 *begin = iter_move(i);
                             }
@@ -109,7 +110,10 @@ namespace ranges
             /// \ingroup group-actions
             /// \relates stride_fn
             /// \sa action
-            constexpr action<stride_fn> stride{};
+            namespace
+            {
+                constexpr auto&& stride = static_const<action<stride_fn>>::value;
+            }
         }
         /// @}
     }

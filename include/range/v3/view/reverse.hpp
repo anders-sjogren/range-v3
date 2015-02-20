@@ -21,6 +21,8 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_adaptor.hpp>
+#include <range/v3/utility/meta.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/view.hpp>
 
 namespace ranges
@@ -52,17 +54,17 @@ namespace ranges
                 range_iterator_t<Rng> begin(reverse_view const &rng) const
                 {
                     auto it = ranges::end(rng.mutable_base());
-                    ranges::advance_bounded(it, -1, ranges::begin(rng.mutable_base()));
+                    ranges::advance(it, -1, ranges::begin(rng.mutable_base()));
                     return it;
                 }
                 void next(range_iterator_t<Rng> &it) const
                 {
-                    if(0 != ranges::advance_bounded(it, -1, ranges::begin(rng_->mutable_base())))
+                    if(0 != ranges::advance(it, -1, ranges::begin(rng_->mutable_base())))
                         it = ranges::end(rng_->mutable_base());
                 }
                 void prev(range_iterator_t<Rng> &it) const
                 {
-                    if(0 != ranges::advance_bounded(it, 1, ranges::end(rng_->mutable_base())))
+                    if(0 != ranges::advance(it, 1, ranges::end(rng_->mutable_base())))
                         it = ranges::begin(rng_->mutable_base());
                 }
                 CONCEPT_REQUIRES(RandomAccessIterable<Rng>())
@@ -97,8 +99,8 @@ namespace ranges
             }
         public:
             reverse_view() = default;
-            reverse_view(Rng && rng)
-              : range_adaptor_t<reverse_view>{std::forward<Rng>(rng)}
+            reverse_view(Rng rng)
+              : range_adaptor_t<reverse_view>{std::move(rng)}
             {}
             CONCEPT_REQUIRES(SizedIterable<Rng>())
             range_size_t<Rng> size() const
@@ -117,9 +119,9 @@ namespace ranges
                     BoundedIterable<Rng>>;
 
                 template<typename Rng, CONCEPT_REQUIRES_(Concept<Rng>())>
-                reverse_view<Rng> operator()(Rng && rng) const
+                reverse_view<all_t<Rng>> operator()(Rng && rng) const
                 {
-                    return reverse_view<Rng>{std::forward<Rng>(rng)};
+                    return reverse_view<all_t<Rng>>{all(std::forward<Rng>(rng))};
                 }
             #ifndef RANGES_DOXYGEN_INVOKED
                 // For error reporting
@@ -138,7 +140,10 @@ namespace ranges
 
             /// \relates reverse_fn
             /// \ingroup group-views
-            constexpr view<reverse_fn> reverse{};
+            namespace
+            {
+                constexpr auto&& reverse = static_const<view<reverse_fn>>::value;
+            }
         }
         /// @}
     }

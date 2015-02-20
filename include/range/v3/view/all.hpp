@@ -19,9 +19,9 @@
 #include <range/v3/range.hpp>
 #include <range/v3/begin_end.hpp>
 #include <range/v3/size.hpp>
-#include <range/v3/utility/pipeable.hpp>
 #include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -98,7 +98,10 @@ namespace ranges
 
             /// \relates all_fn
             /// \ingroup group-views
-            constexpr all_fn all{};
+            namespace
+            {
+                constexpr auto&& all = static_const<all_fn>::value;
+            }
 
             template<typename Rng>
             using all_t =

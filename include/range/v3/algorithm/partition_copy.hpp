@@ -19,28 +19,26 @@
 #include <range/v3/distance.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename O0, typename O1, typename C, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename O0, typename O1, typename C, typename P = ident>
         using PartitionCopyable = meta::fast_and<
             InputIterator<I>,
             WeaklyIncrementable<O0>,
             WeaklyIncrementable<O1>,
             IndirectlyCopyable<I, O0>,
             IndirectlyCopyable<I, O1>,
-            Invokable<P, V>,
-            InvokablePredicate<C, X>>;
+            IndirectInvokablePredicate<C, Project<I, P>>>;
 
         /// \addtogroup group-algorithms
         /// @{
@@ -54,14 +52,15 @@ namespace ranges
                 auto && proj = invokable(proj_);
                 for(; begin != end; ++begin)
                 {
-                    if(pred(proj(*begin)))
+                    auto &&x = *begin;
+                    if(pred(proj(x)))
                     {
-                        *o0 = *begin;
+                        *o0 = (decltype(x) &&) x;
                         ++o0;
                     }
                     else
                     {
-                        *o1 = *begin;
+                        *o1 = (decltype(x) &&) x;
                         ++o1;
                     }
                 }
@@ -80,7 +79,10 @@ namespace ranges
 
         /// \sa `partition_copy_fn`
         /// \ingroup group-algorithms
-        constexpr partition_copy_fn partition_copy{};
+        namespace
+        {
+            constexpr auto&& partition_copy = static_const<partition_copy_fn>::value;
+        }
 
         /// @}
     } // namespace v3

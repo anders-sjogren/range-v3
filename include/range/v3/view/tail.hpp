@@ -24,6 +24,7 @@
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_interface.hpp>
 #include <range/v3/utility/iterator.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/all.hpp>
 #include <range/v3/view/view.hpp>
 
@@ -38,15 +39,14 @@ namespace ranges
           : range_interface<tail_view<Rng>, is_infinite<Rng>::value>
         {
         private:
-            using base_range_t = view::all_t<Rng>;
-            base_range_t rng_;
+            Rng rng_;
         public:
-            using iterator = range_iterator_t<base_range_t>;
-            using sentinel = range_sentinel_t<base_range_t>;
+            using iterator = range_iterator_t<Rng>;
+            using sentinel = range_sentinel_t<Rng>;
 
             tail_view() = default;
-            tail_view(Rng &&rng)
-              : rng_(view::all(std::forward<Rng>(rng)))
+            tail_view(Rng rng)
+              : rng_(std::forward<Rng>(rng))
             {
                 CONCEPT_ASSERT(InputIterable<Rng>());
                 RANGES_ASSERT(!ForwardIterable<Rng>() || !empty(rng_));
@@ -59,16 +59,16 @@ namespace ranges
             {
                 return ranges::end(rng_);
             }
-            CONCEPT_REQUIRES(SizedRange<base_range_t>())
-            range_size_t<base_range_t> size() const
+            CONCEPT_REQUIRES(SizedRange<Rng>())
+            range_size_t<Rng> size() const
             {
                 return ranges::size(rng_) - 1;
             }
-            base_range_t & base()
+            Rng & base()
             {
                 return rng_;
             }
-            base_range_t const & base() const
+            Rng const & base() const
             {
                 return rng_;
             }
@@ -79,9 +79,9 @@ namespace ranges
             struct tail_fn
             {
                 template<typename Rng, CONCEPT_REQUIRES_(InputIterable<Rng>())>
-                tail_view<Rng> operator()(Rng && rng) const
+                tail_view<all_t<Rng>> operator()(Rng && rng) const
                 {
-                    return tail_view<Rng>{std::forward<Rng>(rng)};
+                    return tail_view<all_t<Rng>>{all(std::forward<Rng>(rng))};
                 }
 
             #ifndef RANGES_DOXYGEN_INVOKED
@@ -97,7 +97,10 @@ namespace ranges
 
             /// \relates tail_fn
             /// \ingroup group-views
-            constexpr view<tail_fn> tail{};
+            namespace
+            {
+                constexpr auto&& tail = static_const<view<tail_fn>>::value;
+            }
         }
         /// @}
     }

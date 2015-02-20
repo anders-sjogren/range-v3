@@ -20,6 +20,7 @@
 #include <range/v3/view/all.hpp>
 #include <range/v3/view/any_range.hpp>
 #include <range/v3/view/bounded.hpp>
+#include <range/v3/view/c_str.hpp>
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/const.hpp>
 #include <range/v3/view/counted.hpp>
@@ -56,6 +57,7 @@
 #include <range/v3/view/tokenize.hpp>
 #include <range/v3/view/unbounded.hpp>
 #include <range/v3/view/unique.hpp>
+#include <range/v3/view/zip_with.hpp>
 #include <range/v3/view/zip.hpp>
 
 #include <range/v3/detail/re_enable_warnings.hpp>

@@ -22,6 +22,7 @@
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -64,7 +65,7 @@ namespace ranges
                 Rng operator()(Rng && rng, range_difference_t<Rng> n) const
                 {
                     RANGES_ASSERT(n >= 0);
-                    ranges::action::erase(rng, next_bounded(begin(rng), n, end(rng)), end(rng));
+                    ranges::action::erase(rng, ranges::next(begin(rng), n, end(rng)), end(rng));
                     return std::forward<Rng>(rng);
                 }
 
@@ -90,7 +91,10 @@ namespace ranges
             /// \ingroup group-actions
             /// \relates take_fn
             /// \sa action
-            constexpr action<take_fn> take{};
+            namespace
+            {
+                constexpr auto&& take = static_const<action<take_fn>>::value;
+            }
         }
         /// @}
     }

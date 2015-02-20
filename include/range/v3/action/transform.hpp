@@ -21,6 +21,7 @@
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -72,11 +73,11 @@ namespace ranges
                     CONCEPT_ASSERT_MSG(InputIterable<Rng>(),
                         "The object on which action::transform operates must be a model of the "
                         "InputIterable concept.");
-                    CONCEPT_ASSERT_MSG(Invokable<P, range_common_reference_t<Rng>>(),
-                        "The projection argument to action::transform must be callable with "
-                        "objects of the range's common reference type.");
-                    CONCEPT_ASSERT_MSG(Invokable<F,
-                            concepts::Invokable::result_t<P, range_common_reference_t<Rng>>>(),
+                    using I = range_iterator_t<Rng>;
+                    CONCEPT_ASSERT_MSG(Projectable<I, P>(),
+                        "The projection function must accept objects of the iterator's value type, "
+                        "reference type, and rvalue reference type.");
+                    CONCEPT_ASSERT_MSG(IndirectInvokable<F, Project<I, P>>(),
                         "The function argument to action::transform must be callable with "
                         "the result of the projection argument, or with objects of the range's "
                         "common reference type if no projection is specified.");
@@ -92,7 +93,10 @@ namespace ranges
             /// \ingroup group-actions
             /// \relates transform_fn
             /// \sa action
-            constexpr action<transform_fn> transform{};
+            namespace
+            {
+                constexpr auto&& transform = static_const<action<transform_fn>>::value;
+            }
         }
         /// @}
     }

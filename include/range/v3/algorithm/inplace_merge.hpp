@@ -36,13 +36,13 @@
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/swap.hpp>
 #include <range/v3/algorithm/lower_bound.hpp>
 #include <range/v3/algorithm/upper_bound.hpp>
 #include <range/v3/algorithm/move.hpp>
 #include <range/v3/algorithm/merge_move.hpp>
 #include <range/v3/algorithm/rotate.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -170,7 +170,10 @@ namespace ranges
                 }
             };
 
-            constexpr merge_adaptive_fn merge_adaptive {};
+            namespace
+            {
+                constexpr auto&& merge_adaptive = static_const<merge_adaptive_fn>::value;
+            }
 
             struct inplace_merge_no_buffer_fn
             {
@@ -184,7 +187,10 @@ namespace ranges
                 }
             };
 
-            constexpr inplace_merge_no_buffer_fn inplace_merge_no_buffer {};
+            namespace
+            {
+                constexpr auto&& inplace_merge_no_buffer = static_const<inplace_merge_no_buffer_fn>::value;
+            }
         }
         /// \endcond
 
@@ -224,7 +230,10 @@ namespace ranges
 
         /// \sa `inplace_merge_fn`
         /// \ingroup group-algorithms
-        constexpr inplace_merge_fn inplace_merge {};
+        namespace
+        {
+            constexpr auto&& inplace_merge = static_const<inplace_merge_fn>::value;
+        }
 
         /// @}
     } // namespace v3

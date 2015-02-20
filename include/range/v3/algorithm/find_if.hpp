@@ -21,6 +21,7 @@
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -42,13 +43,8 @@ namespace ranges
             /// \pre `F` models `InvokablePredicate<X>`, where `X` is the result type
             ///      of `Invokable<P, V>`
             template<typename I, typename S, typename F, typename P = ident,
-                typename V = iterator_common_reference_t<I>,
-                typename X = concepts::Invokable::result_t<P, V>,
-                CONCEPT_REQUIRES_(
-                    InputIterator<I>() && IteratorRange<I, S>() &&
-                    Invokable<P, V>() &&
-                    InvokablePredicate<F, X>()
-                )>
+                CONCEPT_REQUIRES_(InputIterator<I>() && IteratorRange<I, S>() &&
+                    IndirectInvokablePredicate<F, Project<I, P> >())>
             I operator()(I begin, S end, F pred_, P proj_ = P{}) const
             {
                 auto &&pred = invokable(pred_);
@@ -62,13 +58,7 @@ namespace ranges
             /// \overload
             template<typename Rng, typename F, typename P = ident,
                 typename I = range_iterator_t<Rng>,
-                typename V = iterator_common_reference_t<I>,
-                typename X = concepts::Invokable::result_t<P, V>,
-                CONCEPT_REQUIRES_(
-                    InputIterable<Rng &>() &&
-                    Invokable<P, V>() &&
-                    InvokablePredicate<F, X>()
-                )>
+                CONCEPT_REQUIRES_(InputIterable<Rng &>() && IndirectInvokablePredicate<F, Project<I, P> >())>
             I operator()(Rng &rng, F pred, P proj = P{}) const
             {
                 return (*this)(begin(rng), end(rng), std::move(pred), std::move(proj));
@@ -77,7 +67,10 @@ namespace ranges
 
         /// \sa `find_if_fn`
         /// \ingroup group-algorithms
-        constexpr find_if_fn find_if {};
+        namespace
+        {
+            constexpr auto&& find_if = static_const<find_if_fn>::value;
+        }
 
         /// @}
     } // namespace v3

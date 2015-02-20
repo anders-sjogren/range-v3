@@ -23,8 +23,9 @@
 #include <range/v3/utility/box.hpp>
 #include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/optional.hpp>
-#include <range/v3/utility/pipeable.hpp>
+#include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/all.hpp>
 #include <range/v3/view/view.hpp>
 
@@ -39,14 +40,13 @@ namespace ranges
           : range_interface<drop_view<Rng>, is_infinite<Rng>::value>
           , private meta::if_<
                 RandomAccessIterable<Rng>,
-                detail::empty,
+                meta::nil_,
                 box<optional<range_iterator_t<Rng>>, begin_tag>>
         {
         private:
             friend range_access;
-            using base_range_t = view::all_t<Rng>;
             using difference_type_ = range_difference_t<Rng>;
-            base_range_t rng_;
+            Rng rng_;
             difference_type_ n_;
 
             range_iterator_t<Rng> get_begin_(std::true_type) const
@@ -75,8 +75,8 @@ namespace ranges
             drop_view(drop_view const &that)
               : rng_(that.rng_), n_(that.n_)
             {}
-            drop_view(Rng && rng, difference_type_ n)
-              : rng_(view::all(std::forward<Rng>(rng))), n_(n)
+            drop_view(Rng rng, difference_type_ n)
+              : rng_(std::move(rng)), n_(n)
             {
                 RANGES_ASSERT(n >= 0);
             }
@@ -102,13 +102,15 @@ namespace ranges
             {
                 return ranges::end(rng_);
             }
-            CONCEPT_REQUIRES(RandomAccessIterable<Rng const>())
-            range_iterator_t<Rng const> begin() const
+            template<typename BaseRng = Rng,
+                CONCEPT_REQUIRES_(RandomAccessIterable<BaseRng const>())>
+            range_iterator_t<BaseRng const> begin() const
             {
                 return this->get_begin_(std::true_type{});
             }
-            CONCEPT_REQUIRES(RandomAccessIterable<Rng const>())
-            range_sentinel_t<Rng const> end() const
+            template<typename BaseRng = Rng,
+                CONCEPT_REQUIRES_(RandomAccessIterable<BaseRng const>())>
+            range_sentinel_t<BaseRng const> end() const
             {
                 return ranges::end(rng_);
             }
@@ -117,11 +119,11 @@ namespace ranges
             {
                 return ranges::size(rng_) - static_cast<range_size_t<Rng>>(n_);
             }
-            base_range_t & base()
+            Rng & base()
             {
                 return rng_;
             }
-            base_range_t const & base() const
+            Rng const & base() const
             {
                 return rng_;
             }
@@ -151,10 +153,10 @@ namespace ranges
                 }
             #endif
                 template<typename Rng>
-                static drop_view<Rng>
+                static drop_view<all_t<Rng>>
                 invoke_(Rng && rng, range_difference_t<Rng> n, concepts::InputIterable*)
                 {
-                    return {std::forward<Rng>(rng), n};
+                    return {all(std::forward<Rng>(rng)), n};
                 }
                 template<typename Rng, CONCEPT_REQUIRES_(!Range<Rng>() && std::is_lvalue_reference<Rng>())>
                 static range<range_iterator_t<Rng>, range_sentinel_t<Rng>>
@@ -185,7 +187,10 @@ namespace ranges
 
             /// \relates drop_fn
             /// \ingroup group-views
-            constexpr view<drop_fn> drop{};
+            namespace
+            {
+                constexpr auto&& drop = static_const<view<drop_fn>>::value;
+            }
         }
         /// @}
     }

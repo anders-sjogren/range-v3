@@ -21,9 +21,9 @@
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/algorithm/heap_algorithm.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -66,7 +66,10 @@ namespace ranges
 
         /// \sa `partial_sort_fn`
         /// \ingroup group-algorithms
-        constexpr partial_sort_fn partial_sort {};
+        namespace
+        {
+            constexpr auto&& partial_sort = static_const<partial_sort_fn>::value;
+        }
 
         /// @}
     } // namespace v3

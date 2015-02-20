@@ -20,6 +20,7 @@
 #include <range/v3/action/erase.hpp>
 #include <range/v3/algorithm/unique.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -80,12 +81,10 @@ namespace ranges
                     CONCEPT_ASSERT_MSG(EraseableIterable<Rng, I, S>(),
                         "The object on which action::unique operates must allow element "
                         "removal.");
-                    using V = iterator_common_reference_t<I>;
-                    CONCEPT_ASSERT_MSG(Invokable<P, V>(),
-                        "The projection argument passed to action::unique must accept objects "
-                        "of the range's common reference type.");
-                    using X = concepts::Invokable::result_t<P, V>;
-                    CONCEPT_ASSERT_MSG(InvokableRelation<C, X, X>(),
+                    CONCEPT_ASSERT_MSG(Projectable<I, P>(),
+                        "The projection function must accept objects of the iterator's value type, "
+                        "reference type, and rvalue reference type.");
+                    CONCEPT_ASSERT_MSG(IndirectInvokableRelation<C, Project<I, P>>(),
                         "The comparator passed to action::unique must accept objects returned "
                         "by the projection function, or of the range's value type if no projection "
                         "is specified.");
@@ -100,7 +99,10 @@ namespace ranges
             /// \ingroup group-actions
             /// \relates unique_fn
             /// \sa action
-            constexpr action<unique_fn> unique{};
+            namespace
+            {
+                constexpr auto&& unique = static_const<action<unique_fn>>::value;
+            }
         }
         /// @}
     }

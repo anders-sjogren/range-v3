@@ -26,11 +26,12 @@
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_adaptor.hpp>
 #include <range/v3/utility/meta.hpp>
-#include <range/v3/utility/pipeable.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/optional.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/semiregular.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/view.hpp>
+#include <range/v3/view/all.hpp>
 
 namespace ranges
 {
@@ -44,7 +45,7 @@ namespace ranges
         {
         private:
             friend range_access;
-            semiregular_invokable_t<Fun> fun_;
+            semiregular_t<invokable_t<Fun>> fun_;
             using single_pass = SinglePass<range_iterator_t<Rng>>;
             using use_sentinel_t = meta::or_<meta::not_<BoundedIterable<Rng>>, single_pass>;
 
@@ -79,12 +80,16 @@ namespace ranges
                 }
             };
 
-            CONCEPT_REQUIRES(!Invokable<Fun const, range_common_reference_t<Rng>,
-                range_common_reference_t<Rng>>())
             adaptor<false> begin_adaptor()
             {
                 return empty(this->base()) ? adaptor<false>{*this} :
                     adaptor<false>{*this, front(this->base())};
+            }
+            meta::if_<use_sentinel_t, adaptor_base, adaptor<false>> end_adaptor()
+            {
+                if(use_sentinel_t() || empty(this->base()))
+                    return {*this};
+                return {*this, front(this->base())};
             }
             CONCEPT_REQUIRES(Invokable<Fun const, range_common_reference_t<Rng>,
                 range_common_reference_t<Rng>>())
@@ -93,29 +98,18 @@ namespace ranges
                 return empty(this->base()) ? adaptor<true>{*this} :
                     adaptor<true>{*this, front(this->base())};
             }
-            CONCEPT_REQUIRES(use_sentinel_t())
-            adaptor_base end_adaptor() const
+            CONCEPT_REQUIRES(Invokable<Fun const, range_common_reference_t<Rng>,
+                range_common_reference_t<Rng>>())
+            meta::if_<use_sentinel_t, adaptor_base, adaptor<true>> end_adaptor() const
             {
-                return {};
-            }
-            CONCEPT_REQUIRES(!use_sentinel_t() && !Invokable<Fun const,
-                range_common_reference_t<Rng>, range_common_reference_t<Rng>>())
-            adaptor<false> end_adaptor()
-            {
-                return empty(this->base()) ? adaptor<false>{*this} :
-                    adaptor<false>{*this, front(this->base())};
-            }
-            CONCEPT_REQUIRES(!use_sentinel_t() && Invokable<Fun const,
-                range_common_reference_t<Rng>, range_common_reference_t<Rng>>())
-            adaptor<true> end_adaptor() const
-            {
-                return empty(this->base()) ? adaptor<true>{*this} :
-                    adaptor<true>{*this, front(this->base())};
+                if(use_sentinel_t() || empty(this->base()))
+                    return {*this};
+                return {*this, front(this->base())};
             }
         public:
             partial_sum_view() = default;
-            partial_sum_view(Rng && rng, Fun fun)
-              : range_adaptor_t<partial_sum_view>{std::forward<Rng>(rng)}
+            partial_sum_view(Rng rng, Fun fun)
+              : range_adaptor_t<partial_sum_view>{std::move(rng)}
               , fun_(invokable(std::move(fun)))
             {}
             CONCEPT_REQUIRES(SizedIterable<Rng>())
@@ -142,7 +136,7 @@ namespace ranges
                 template<typename Rng, typename Fun>
                 using Concept = meta::and_<
                     InputIterable<Rng>,
-                    Invokable<Fun, range_common_reference_t<Rng>, range_common_reference_t<Rng>>,
+                    IndirectInvokable<Fun, range_iterator_t<Rng>, range_iterator_t<Rng>>,
                     Convertible<
                         concepts::Invokable::result_t<Fun, range_common_reference_t<Rng>,
                             range_common_reference_t<Rng>>,
@@ -150,9 +144,9 @@ namespace ranges
 
                 template<typename Rng, typename Fun,
                     CONCEPT_REQUIRES_(Concept<Rng, Fun>())>
-                partial_sum_view<Rng, Fun> operator()(Rng && rng, Fun fun) const
+                partial_sum_view<all_t<Rng>, Fun> operator()(Rng && rng, Fun fun) const
                 {
-                    return {std::forward<Rng>(rng), std::move(fun)};
+                    return {all(std::forward<Rng>(rng)), std::move(fun)};
                 }
             #ifndef RANGES_DOXYGEN_INVOKED
                 template<typename Rng, typename Fun,
@@ -162,8 +156,8 @@ namespace ranges
                     CONCEPT_ASSERT_MSG(InputIterable<Rng>(),
                         "The first argument passed to view::partial_sum must be a model of the "
                         "InputIterable concept.");
-                    CONCEPT_ASSERT_MSG(Invokable<Fun, range_common_reference_t<Rng>,
-                        range_common_reference_t<Rng>>(),
+                    CONCEPT_ASSERT_MSG(IndirectInvokable<Fun, range_iterator_t<Rng>,
+                        range_iterator_t<Rng>>(),
                         "The second argument passed to view::partial_sum must be callable with "
                         "two values from the range passed as the first argument.");
                     CONCEPT_ASSERT_MSG(Convertible<
@@ -177,7 +171,10 @@ namespace ranges
 
             /// \relates partial_sum_fn
             /// \ingroup group-views
-            constexpr view<partial_sum_fn> partial_sum{};
+            namespace
+            {
+                constexpr auto&& partial_sum = static_const<view<partial_sum_fn>>::value;
+            }
         }
         /// @}
     }

@@ -27,24 +27,22 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename C = ordered_less, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename C = ordered_less, typename P = ident>
         using IsHeapable = meta::fast_and<
             RandomAccessIterator<I>,
-            Invokable<P, V>,
-            InvokableRelation<C, X>>;
+            IndirectInvokableRelation<C, Project<I, P>>>;
 
         /// \cond
         namespace detail
@@ -77,7 +75,10 @@ namespace ranges
                 }
             };
 
-            constexpr is_heap_until_n_fn is_heap_until_n {};
+            namespace
+            {
+                constexpr auto&& is_heap_until_n = static_const<is_heap_until_n_fn>::value;
+            }
 
             struct is_heap_n_fn
             {
@@ -89,7 +90,10 @@ namespace ranges
                 }
             };
 
-            constexpr is_heap_n_fn is_heap_n {};
+            namespace
+            {
+                constexpr auto&& is_heap_n = static_const<is_heap_n_fn>::value;
+            }
         }
         /// \endcond
 
@@ -116,7 +120,10 @@ namespace ranges
 
         /// \sa `is_heap_until_fn`
         /// \ingroup group-algorithms
-        constexpr is_heap_until_fn is_heap_until {};
+        namespace
+        {
+            constexpr auto&& is_heap_until = static_const<is_heap_until_fn>::value;
+        }
 
         struct is_heap_fn
         {
@@ -139,7 +146,10 @@ namespace ranges
 
         /// \sa `is_heap_fn`
         /// \ingroup group-algorithms
-        constexpr with_braced_init_args<is_heap_fn> is_heap {};
+        namespace
+        {
+            constexpr auto&& is_heap = static_const<with_braced_init_args<is_heap_fn>>::value;
+        }
         /// @}
 
         /// \cond
@@ -150,7 +160,6 @@ namespace ranges
                 template<typename I, typename C = ordered_less, typename P = ident>
                 void operator()(I begin, iterator_difference_t<I> len, C pred_ = C{}, P proj_ = P{}) const
                 {
-                    using R = iterator_common_reference_t<I>;
                     if(len > 1)
                     {
                         auto &&pred = invokable(pred_);
@@ -169,21 +178,23 @@ namespace ranges
                                     break;
                                 len = (len - 1) / 2;
                                 i = begin + len;
-                            } while(pred(proj(R(*i)), proj(R(v))));
+                            } while(pred(proj(*i), proj(v)));
                             *end = std::move(v);
                         }
                     }
                 }
             };
 
-            constexpr sift_up_n_fn sift_up_n{};
+            namespace
+            {
+                constexpr auto&& sift_up_n = static_const<sift_up_n_fn>::value;
+            }
 
             struct sift_down_n_fn
             {
                 template<typename I, typename C = ordered_less, typename P = ident>
                 void operator()(I begin, iterator_difference_t<I> len, I start, C pred_ = C {}, P proj_ = P{}) const
                 {
-                    using R = iterator_common_reference_t<I>;
                     // left-child of start is at 2 * start + 1
                     // right-child of start is at 2 * start + 2
                     auto child = start - begin;
@@ -231,12 +242,15 @@ namespace ranges
                         }
 
                         // check if we are in heap-order
-                    } while (!pred(proj(R(*child_i)), proj(R(top))));
+                    } while (!pred(proj(*child_i), proj(top)));
                     *start = std::move(top);
                 }
             };
 
-            constexpr sift_down_n_fn sift_down_n{};
+            namespace
+            {
+                constexpr auto&& sift_down_n = static_const<sift_down_n_fn>::value;
+            }
         }
         /// \endcond
 
@@ -267,7 +281,10 @@ namespace ranges
 
         /// \sa `push_heap_fn`
         /// \ingroup group-algorithms
-        constexpr push_heap_fn push_heap {};
+        namespace
+        {
+            constexpr auto&& push_heap = static_const<push_heap_fn>::value;
+        }
         /// @}
 
         /// \cond
@@ -288,7 +305,10 @@ namespace ranges
                 }
             };
 
-            constexpr pop_heap_n_fn pop_heap_n{};
+            namespace
+            {
+                constexpr auto&& pop_heap_n = static_const<pop_heap_n_fn>::value;
+            }
         }
         /// \endcond
 
@@ -319,7 +339,10 @@ namespace ranges
 
         /// \sa `pop_heap_fn`
         /// \ingroup group-algorithms
-        constexpr pop_heap_fn pop_heap {};
+        namespace
+        {
+            constexpr auto&& pop_heap = static_const<pop_heap_fn>::value;
+        }
 
         struct make_heap_fn
         {
@@ -356,7 +379,10 @@ namespace ranges
 
         /// \sa `make_heap_fn`
         /// \ingroup group-algorithms
-        constexpr make_heap_fn make_heap {};
+        namespace
+        {
+            constexpr auto&& make_heap = static_const<make_heap_fn>::value;
+        }
 
         struct sort_heap_fn
         {
@@ -389,7 +415,10 @@ namespace ranges
 
         /// \sa `sort_heap_fn`
         /// \ingroup group-algorithms
-        constexpr sort_heap_fn sort_heap {};
+        namespace
+        {
+            constexpr auto&& sort_heap = static_const<sort_heap_fn>::value;
+        }
 
         /// @}
     } // namespace v3

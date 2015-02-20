@@ -17,6 +17,7 @@
 #include <range/v3/range_fwd.hpp>
 #include <range/v3/begin_end.hpp>
 #include <range/v3/utility/iterator.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -53,8 +54,8 @@ namespace ranges
                 return size(t.get());
             }
 
-            template<typename T>
-            auto size(ranges::reference_wrapper<T> t) -> decltype(size(t.get()))
+            template<typename T, bool RValue>
+            auto size(ranges::reference_wrapper<T, RValue> t) -> decltype(size(t.get()))
             {
                 return size(t.get());
             }
@@ -94,7 +95,10 @@ namespace ranges
 
         /// \ingroup group-core
         /// \return The result of an unqualified call to `size`
-        constexpr adl_size_detail::size_fn size {};
+        namespace
+        {
+            constexpr auto&& size = static_const<adl_size_detail::size_fn>::value;
+        }
     }
 }
 

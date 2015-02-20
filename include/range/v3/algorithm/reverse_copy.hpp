@@ -17,10 +17,12 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -41,7 +43,7 @@ namespace ranges
                 CONCEPT_REQUIRES_(IteratorRange<I, S>() && ReverseCopyable<I, O>())>
             std::pair<I, O> operator()(I begin, S end_, O out) const
             {
-                I end = next_to(begin, end_), res = end;
+                I end = ranges::next(begin, end_), res = end;
                 for (; begin != end; ++out)
                     *out = *--end;
                 return {res, out};
@@ -58,7 +60,10 @@ namespace ranges
 
         /// \sa `reverse_copy_fn`
         /// \ingroup group-algorithms
-        constexpr reverse_copy_fn reverse_copy{};
+        namespace
+        {
+            constexpr auto&& reverse_copy = static_const<reverse_copy_fn>::value;
+        }
 
         /// @}
     } // namespace v3

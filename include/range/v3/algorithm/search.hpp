@@ -27,10 +27,12 @@
 #include <range/v3/distance.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -100,7 +102,7 @@ namespace ranges
                     while(true)
                     {
                         if(d1 < d2)  // return the end if we've run out of room
-                            return next_to(recounted(begin1_, std::move(begin1), d1_ - d1), std::move(end1));
+                            return ranges::next(recounted(begin1_, std::move(begin1), d1_ - d1), std::move(end1));
                         if(pred(proj1(*begin1), proj2(*begin2)))
                             break;
                         ++begin1;
@@ -204,7 +206,10 @@ namespace ranges
 
         /// \sa `search_fn`
         /// \ingroup group-algorithms
-        constexpr with_braced_init_args<search_fn> search{};
+        namespace
+        {
+            constexpr auto&& search = static_const<with_braced_init_args<search_fn>>::value;
+        }
 
         /// @}
     } // namespace v3

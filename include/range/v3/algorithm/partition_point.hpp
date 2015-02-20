@@ -26,11 +26,12 @@
 #include <range/v3/distance.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -42,8 +43,7 @@ namespace ranges
             typename X = concepts::Invokable::result_t<P, V>>
         using PartitionPointable = meta::fast_and<
             ForwardIterator<I>,
-            Invokable<P, V>,
-            InvokablePredicate<C, X>>;
+            IndirectInvokablePredicate<C, Project<I, P>>>;
 
         /// \addtogroup group-algorithms
         /// @{
@@ -83,7 +83,10 @@ namespace ranges
 
         /// \sa `partition_point_fn`
         /// \ingroup group-algorithms
-        constexpr partition_point_fn partition_point{};
+        namespace
+        {
+            constexpr auto&& partition_point = static_const<partition_point_fn>::value;
+        }
 
         /// @}
     } // namespace v3

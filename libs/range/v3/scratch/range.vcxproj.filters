@@ -521,6 +521,15 @@
     <ClCompile Include="..\..\..\..\test\view\concat.cpp">
       <Filter>Test Files\view</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\test\action\split.cpp">
+      <Filter>Test Files\action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\test\utility\functional.cpp">
+      <Filter>Test Files\utility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\test\utility\common_type.cpp">
+      <Filter>Test Files\utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\range\v3\begin_end.hpp">
@@ -717,9 +726,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\range\v3\view\reverse.hpp">
       <Filter>Header Files\view</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\include\range\v3\utility\invokable.hpp">
-      <Filter>Header Files\utility</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\range\v3\utility\compressed_pair.hpp">
       <Filter>Header Files\utility</Filter>
@@ -1036,9 +1042,6 @@
     <ClInclude Include="..\..\..\..\include\range\v3\utility\semiregular.hpp">
       <Filter>Header Files\utility</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\include\range\v3\utility\pipeable.hpp">
-      <Filter>Header Files\utility</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\include\range\v3\action\action.hpp">
       <Filter>Header Files\action</Filter>
     </ClInclude>
@@ -1140,6 +1143,21 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\range\v3\algorithm\merge_move.hpp">
       <Filter>Header Files\algorithm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\range\v3\utility\common_tuple.hpp">
+      <Filter>Header Files\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\range\v3\utility\static_const.hpp">
+      <Filter>Header Files\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\range\v3\action\split.hpp">
+      <Filter>Header Files\action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\range\v3\view\c_str.hpp">
+      <Filter>Header Files\view</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\range\v3\view\zip_with.hpp">
+      <Filter>Header Files\view</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

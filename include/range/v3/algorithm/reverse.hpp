@@ -21,6 +21,7 @@
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/swap.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -56,7 +57,7 @@ namespace ranges
                 CONCEPT_REQUIRES_(BidirectionalIterator<I>() && IteratorRange<I, S>() && Permutable<I>())>
             I operator()(I begin, S end_) const
             {
-                I end = next_to(begin, end_);
+                I end = ranges::next(begin, end_);
                 reverse_fn::impl(begin, end, iterator_concept<I>{});
                 return end;
             }
@@ -71,7 +72,10 @@ namespace ranges
 
         /// \sa `reverse_fn`
         /// \ingroup group-algorithms
-        constexpr reverse_fn reverse{};
+        namespace
+        {
+            constexpr auto&& reverse = static_const<reverse_fn>::value;
+        }
 
         /// @}
     } // namespace v3

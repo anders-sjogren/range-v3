@@ -19,9 +19,9 @@
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/algorithm/aux_/equal_range_n.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -54,7 +54,10 @@ namespace ranges
 
         /// \sa `equal_range_fn`
         /// \ingroup group-algorithms
-        constexpr equal_range_fn equal_range{};
+        namespace
+        {
+            constexpr auto&& equal_range = static_const<equal_range_fn>::value;
+        }
 
         /// @}
     } // namespace v3

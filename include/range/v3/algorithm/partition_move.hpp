@@ -19,28 +19,26 @@
 #include <range/v3/distance.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename O0, typename O1, typename C, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename O0, typename O1, typename C, typename P = ident>
         using PartitionMovable = meta::fast_and<
             InputIterator<I>,
             WeaklyIncrementable<O0>,
             WeaklyIncrementable<O1>,
             IndirectlyMovable<I, O0>,
             IndirectlyMovable<I, O1>,
-            Invokable<P, V>,
-            InvokablePredicate<C, X>>;
+            IndirectInvokablePredicate<C, Project<I, P>>>;
 
         /// \addtogroup group-algorithms
         /// @{
@@ -80,7 +78,10 @@ namespace ranges
 
         /// \sa `partition_move_fn`
         /// \ingroup group-algorithms
-        constexpr partition_move_fn partition_move{};
+        namespace
+        {
+            constexpr auto&& partition_move = static_const<partition_move_fn>::value;
+        }
 
         /// @}
     } // namespace v3

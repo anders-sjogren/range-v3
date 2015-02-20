@@ -25,23 +25,21 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename C, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename C, typename P = ident>
         using IsPartitionedable = meta::fast_and<
             InputIterator<I>,
-            Invokable<P, V>,
-            InvokablePredicate<C, X>>;
+            IndirectInvokablePredicate<C, Project<I, P>>>;
 
         /// \addtogroup group-algorithms
         /// @{
@@ -73,7 +71,10 @@ namespace ranges
 
         /// \sa `is_partitioned_fn`
         /// \ingroup group-algorithms
-        constexpr with_braced_init_args<is_partitioned_fn> is_partitioned{};
+        namespace
+        {
+            constexpr auto&& is_partitioned = static_const<with_braced_init_args<is_partitioned_fn>>::value;
+        }
 
         /// @}
     } // namespace v3

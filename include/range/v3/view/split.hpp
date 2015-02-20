@@ -22,9 +22,13 @@
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_facade.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/meta.hpp>
+#include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/semiregular.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/algorithm/adjacent_find.hpp>
 #include <range/v3/view/view.hpp>
+#include <range/v3/view/all.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/indirect.hpp>
 #include <range/v3/view/take_while.hpp>
@@ -41,25 +45,27 @@ namespace ranges
         {
         private:
             friend range_access;
-            view::all_t<Rng> rng_;
-            semiregular_invokable_t<Fun> fun_;
+            Rng rng_;
+            semiregular_t<invokable_t<Fun>> fun_;
 
             template<bool IsConst>
             struct cursor
             {
             private:
-                friend range_access; friend split_view;
+                friend range_access;
+                friend split_view;
                 bool zero_;
                 range_iterator_t<Rng> cur_;
                 range_sentinel_t<Rng> last_;
-                semiregular_invokable_ref_t<Fun, IsConst> fun_;
+                using fun_ref_t = semiregular_ref_or_val_t<invokable_t<Fun>, IsConst>;
+                fun_ref_t fun_;
 
                 struct search_pred
                 {
                     bool zero_;
                     range_iterator_t<Rng> first_;
                     range_sentinel_t<Rng> last_;
-                    semiregular_invokable_ref_t<Fun, IsConst> fun_;
+                    fun_ref_t fun_;
                     bool operator()(range_iterator_t<Rng> cur) const
                     {
                         return (zero_ && cur == first_) || (cur != last_ && !fun_(cur, last_).first);
@@ -79,7 +85,7 @@ namespace ranges
                 {
                     RANGES_ASSERT(cur_ != last_);
                     // If the last match consumed zero elements, bump the position.
-                    advance_bounded(cur_, (int)zero_, last_);
+                    advance(cur_, (int)zero_, last_);
                     zero_ = false;
                     for(; cur_ != last_; ++cur_)
                     {
@@ -100,8 +106,7 @@ namespace ranges
                 {
                     return cur_ == that.cur_;
                 }
-                cursor(semiregular_invokable_ref_t<Fun, IsConst> fun, range_iterator_t<Rng> first,
-                    range_sentinel_t<Rng> last)
+                cursor(fun_ref_t fun, range_iterator_t<Rng> first, range_sentinel_t<Rng> last)
                   : cur_(first), last_(last), fun_(fun)
                 {
                     // For skipping an initial zero-length match
@@ -111,7 +116,6 @@ namespace ranges
             public:
                 cursor() = default;
             };
-            CONCEPT_REQUIRES(!Invokable<Fun const, range_iterator_t<Rng>, range_sentinel_t<Rng>>())
             cursor<false> begin_cursor()
             {
                 return {fun_, ranges::begin(rng_), ranges::end(rng_)};
@@ -123,8 +127,8 @@ namespace ranges
             }
         public:
             split_view() = default;
-            split_view(Rng && rng, Fun fun)
-              : rng_(view::all(std::forward<Rng>(rng)))
+            split_view(Rng rng, Fun fun)
+              : rng_(std::move(rng))
               , fun_(std::move(fun))
             {}
         };
@@ -202,21 +206,21 @@ namespace ranges
 
                 template<typename Rng, typename Fun,
                     CONCEPT_REQUIRES_(FunctionConcept<Rng, Fun>())>
-                split_view<Rng, Fun> operator()(Rng && rng, Fun fun) const
+                split_view<all_t<Rng>, Fun> operator()(Rng && rng, Fun fun) const
                 {
-                    return {std::forward<Rng>(rng), std::move(fun)};
+                    return {all(std::forward<Rng>(rng)), std::move(fun)};
                 }
                 template<typename Rng,
                     CONCEPT_REQUIRES_(ElementConcept<Rng>())>
-                split_view<Rng, element_pred<Rng>> operator()(Rng && rng, range_value_t<Rng> val) const
+                split_view<all_t<Rng>, element_pred<Rng>> operator()(Rng && rng, range_value_t<Rng> val) const
                 {
-                    return {std::forward<Rng>(rng), {std::move(val)}};
+                    return {all(std::forward<Rng>(rng)), {std::move(val)}};
                 }
                 template<typename Rng, typename Sub,
                     CONCEPT_REQUIRES_(SubRangeConcept<Rng, Sub>())>
-                split_view<Rng, subrange_pred<Rng, Sub>> operator()(Rng && rng, Sub && sub) const
+                split_view<all_t<Rng>, subrange_pred<Rng, Sub>> operator()(Rng && rng, Sub && sub) const
                 {
-                    return {std::forward<Rng>(rng), {std::forward<Sub>(sub)}};
+                    return {all(std::forward<Rng>(rng)), {std::forward<Sub>(sub)}};
                 }
 
             #ifndef RANGES_DOXYGEN_INVOKED
@@ -242,7 +246,10 @@ namespace ranges
 
             /// \relates split_fn
             /// \ingroup group-views
-            constexpr view<split_fn> split{};
+            namespace
+            {
+                constexpr auto&& split = static_const<view<split_fn>>::value;
+            }
         }
         /// @}
     }

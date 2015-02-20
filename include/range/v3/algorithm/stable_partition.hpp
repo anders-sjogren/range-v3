@@ -32,25 +32,23 @@
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/swap.hpp>
 #include <range/v3/algorithm/move.hpp>
 #include <range/v3/algorithm/rotate.hpp>
 #include <range/v3/algorithm/partition_move.hpp>
+#include <range/v3/utility/meta.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename C, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename C, typename P = ident>
         using StablePartitionable = meta::fast_and<
             ForwardIterator<I>,
             Permutable<I>,
-            Invokable<P, V>,
-            InvokablePredicate<C, X>>;
+            IndirectInvokablePredicate<C, Project<I, P>>>;
 
         /// \addtogroup group-algorithms
         /// @{
@@ -246,7 +244,7 @@ namespace ranges
                 }
                 // begin points to first false, everything prior to begin is already set.
                 // Either prove [begin, end) is all false and return begin, or point end to last true
-                I end = next_to(begin, end_);
+                I end = ranges::next(begin, end_);
                 do
                 {
                     if(begin == --end)
@@ -286,7 +284,10 @@ namespace ranges
 
         /// \sa `stable_partition_fn`
         /// \ingroup group-algorithms
-        constexpr stable_partition_fn stable_partition{};
+        namespace
+        {
+            constexpr auto&& stable_partition = static_const<stable_partition_fn>::value;
+        }
 
         /// @}
     } // namespace v3

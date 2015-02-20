@@ -33,14 +33,13 @@
 /// \defgroup group-actions Actions
 /// Eager, mutating, composable algorithms
 
-/// \defgroup group-actions Actions
-/// Eager, mutating, chainable algorithms
-
 /// \defgroup group-concepts Concepts
 /// Concept-checking classes and utilities
 
 /// \defgroup group-meta Metaprogramming
 /// Metaprogramming utilities
+/// \note The algorithmic complexity listed for these utilities describes
+///     the total number of templates they cause to be instantiated.
 
 namespace ranges
 {
@@ -109,6 +108,9 @@ namespace ranges
         template<typename ...Ts>
         using common_type_t = typename common_type<Ts...>::type;
 
+        template<typename T, typename U, typename TQual, typename UQual>
+        struct common_reference_base;
+
         template<typename ...Ts>
         struct common_reference;
 
@@ -127,6 +129,12 @@ namespace ranges
         template<typename Derived>
         struct pipeable;
 
+        template<typename First, typename Second>
+        struct composed;
+
+        template<typename ...Fns>
+        struct overloaded;
+
         namespace action
         {
             template<typename Action>
@@ -139,7 +147,11 @@ namespace ranges
             struct view;
         }
 
-        struct advance_fn;
+        namespace adl_advance_detail
+        {
+            struct advance_fn;
+        }
+        using adl_advance_detail::advance_fn;
 
         struct advance_to_fn;
 
@@ -166,9 +178,6 @@ namespace ranges
         /// \cond
         namespace detail
         {
-            struct empty
-            {};
-
             template<typename T = void>
             struct any_
             {
@@ -220,30 +229,33 @@ namespace ranges
                 return static_cast<typename std::remove_reference<T>::type &&>(t);
             }
 
-            ////////////////////////////////////////////////////////////////////////////////////
-            // void_
-            template<typename...Rest>
-            struct always_void
-            {
-                using type = void;
-            };
-
-            template<typename...Rest>
-            using void_t = typename always_void<Rest...>::type;
-
             template<typename T>
             using decay_t = typename std::decay<T>::type;
 
             template<typename T>
             using as_ref_t =
-                typename std::remove_const<typename std::remove_reference<T>::type>::type &;
+                typename std::add_lvalue_reference<
+                    typename std::remove_const<
+                        typename std::remove_reference<T>::type
+                    >::type
+                >::type;
 
             template<typename T>
             using as_cref_t =
-                typename std::add_const<typename std::remove_reference<T>::type>::type &;
+                typename std::add_lvalue_reference<
+                    typename std::add_const<
+                        typename std::remove_reference<T>::type
+                    >::type
+                >::type;
 
             struct get_first;
             struct get_second;
+
+            template<typename Val1, typename Val2>
+            struct replacer_fn;
+
+            template<typename Pred, typename Val>
+            struct replacer_if_fn;
 
             template<typename...Ts>
             void valid_exprs(Ts &&...);
@@ -295,12 +307,6 @@ namespace ranges
 
             template<typename T>
             using remove_rvalue_reference_t = typename remove_rvalue_reference<T>::type;
-
-            struct make_tuple_like_fn;
-            struct copy_tuple_like_fn;
-            struct move_tuple_like_fn;
-            template<typename Ref, typename Val>
-            struct common_tuple_ref;
         }
         /// \endcond
 
@@ -310,12 +316,20 @@ namespace ranges
             struct models;
         }
 
+        struct begin_tag {};
+        struct end_tag {};
+        struct copy_tag {};
+        struct move_tag {};
+
+        template<typename T>
+        struct pointer_type;
+
+        template<typename T>
+        struct iterator_category_type;
+
         template<typename T>
         using uncvref_t =
             typename std::remove_cv<typename std::remove_reference<T>::type>::type;
-
-        struct begin_tag {};
-        struct end_tag {};
 
         struct equal_to;
         struct less;
@@ -413,8 +427,11 @@ namespace ranges
         template<typename Rng>
         struct range_pointer;
 
-        template<typename T>
+        template<typename T, bool RValue = false>
         struct reference_wrapper;
+
+        template<typename T>
+        using rvalue_reference_wrapper = reference_wrapper<T, true>;
 
         // Views
         //
@@ -542,13 +559,6 @@ namespace ranges
             struct repeat_fn;
         }
 
-        namespace view
-        {
-            struct replace_fn;
-
-            struct replace_if_fn;
-        }
-
         template<typename Rng>
         struct reverse_view;
 
@@ -614,11 +624,27 @@ namespace ranges
         }
 
         template<typename Rng, typename Fun>
+        struct iter_transform_view;
+
+        template<typename Rng, typename Fun>
         struct transform_view;
 
         namespace view
         {
             struct transform_fn;
+        }
+
+        template<typename Rng, typename Val1, typename Val2>
+        using replace_view = iter_transform_view<Rng, detail::replacer_fn<Val1, Val2>>;
+
+        template<typename Rng, typename Pred, typename Val>
+        using replace_if_view = iter_transform_view<Rng, detail::replacer_if_fn<Pred, Val>>;
+
+        namespace view
+        {
+            struct replace_fn;
+
+            struct replace_if_fn;
         }
 
         template<typename I>
@@ -650,28 +676,22 @@ namespace ranges
             struct values_fn;
         }
 
-        template<
-            typename Fun,
-            typename Rngs,
-            typename CopyFun = ident,
-            typename MoveFun = ident,
-            typename CommonRef = meta::quote<common_reference_t>>
+        template<typename Fun, typename...Rngs>
+        struct iter_zip_with_view;
+
+        template<typename Fun, typename ...Rngs>
         struct zip_with_view;
 
-        template<typename Rngs>
-        using zip_view =
-            zip_with_view<
-                detail::make_tuple_like_fn,
-                Rngs,
-                detail::copy_tuple_like_fn,
-                detail::move_tuple_like_fn,
-                meta::quote_trait<detail::common_tuple_ref>>;
+        template<typename ...Rngs>
+        struct zip_view;
 
         namespace view
         {
-            struct zip_fn;
+            struct iter_zip_with_fn;
 
             struct zip_with_fn;
+
+            struct zip_fn;
         }
     }
 }

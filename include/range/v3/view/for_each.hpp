@@ -17,12 +17,15 @@
 #include <utility>
 #include <range/v3/range_fwd.hpp>
 #include <range/v3/view/view.hpp>
+#include <range/v3/view/all.hpp>
 #include <range/v3/view/join.hpp>
 #include <range/v3/view/generate_n.hpp>
 #include <range/v3/view/repeat_n.hpp>
 #include <range/v3/view/single.hpp>
 #include <range/v3/view/transform.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -35,8 +38,8 @@ namespace ranges
           : join_view<transform_view<Rng, F>>
         {
             for_each_view() = default;
-            for_each_view(Rng && rng, F f)
-              : join_view<transform_view<Rng, F>>{{std::forward<Rng>(rng), std::move(f)}}
+            for_each_view(Rng rng, F f)
+              : join_view<transform_view<Rng, F>>{{std::move(rng), std::move(f)}}
             {}
         };
 
@@ -56,14 +59,14 @@ namespace ranges
                 template<typename Rng, typename F>
                 using Concept = meta::and_<
                     Iterable<Rng>,
-                    Invokable<F, range_common_reference_t<Rng>>,
+                    IndirectInvokable<F, range_iterator_t<Rng>>,
                     Iterable<concepts::Invokable::result_t<F, range_common_reference_t<Rng>>>>;
 
                 template<typename Rng, typename F,
                     CONCEPT_REQUIRES_(Concept<Rng, F>())>
-                for_each_view<Rng, F> operator()(Rng && rng, F f) const
+                for_each_view<all_t<Rng>, F> operator()(Rng && rng, F f) const
                 {
-                    return {std::forward<Rng>(rng), std::move(f)};
+                    return {all(std::forward<Rng>(rng)), std::move(f)};
                 }
 
             #ifndef RANGES_DOXYGEN_INVOKED
@@ -74,7 +77,7 @@ namespace ranges
                 {
                     CONCEPT_ASSERT_MSG(Iterable<Rng>(),
                         "Rng is not a model of the Iterable concept.");
-                    CONCEPT_ASSERT_MSG(Invokable<F, range_common_reference_t<Rng>>(),
+                    CONCEPT_ASSERT_MSG(IndirectInvokable<F, range_iterator_t<Rng>>(),
                         "The function F is not callable with arguments of the type of the range's "
                         "common reference type.");
                     CONCEPT_ASSERT_MSG(Iterable<concepts::Invokable::result_t<F,
@@ -87,7 +90,10 @@ namespace ranges
 
             /// \relates for_each_fn
             /// \ingroup group-views
-            constexpr view<for_each_fn> for_each{};
+            namespace
+            {
+                constexpr auto&& for_each = static_const<view<for_each_fn>>::value;
+            }
         }
 
         struct yield_fn
@@ -101,7 +107,10 @@ namespace ranges
 
         /// \relates yield_fn
         /// \ingroup group-views
-        constexpr yield_fn yield{};
+        namespace
+        {
+            constexpr auto&& yield = static_const<yield_fn>::value;
+        }
 
         struct yield_from_fn
         {
@@ -114,7 +123,10 @@ namespace ranges
 
         /// \relates yield_from_fn
         /// \ingroup group-views
-        constexpr yield_from_fn yield_from{};
+        namespace
+        {
+            constexpr auto&& yield_from = static_const<yield_from_fn>::value;
+        }
 
         struct yield_if_fn
         {
@@ -127,7 +139,10 @@ namespace ranges
 
         /// \relates yield_if_fn
         /// \ingroup group-views
-        constexpr yield_if_fn yield_if{};
+        namespace
+        {
+            constexpr auto&& yield_if = static_const<yield_if_fn>::value;
+        }
 
         struct lazy_yield_if_fn
         {
@@ -141,7 +156,10 @@ namespace ranges
 
         /// \relates lazy_yield_if_fn
         /// \ingroup group-views
-        constexpr lazy_yield_if_fn lazy_yield_if{};
+        namespace
+        {
+            constexpr auto&& lazy_yield_if = static_const<lazy_yield_if_fn>::value;
+        }
         /// @}
 
         /// \cond

@@ -22,10 +22,10 @@
 #include <range/v3/range_adaptor.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/utility/meta.hpp>
-#include <range/v3/utility/pipeable.hpp>
 #include <range/v3/utility/optional.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/semiregular.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/algorithm/find_if_not.hpp>
 #include <range/v3/view/view.hpp>
 
@@ -41,7 +41,7 @@ namespace ranges
         {
         private:
             friend range_access;
-            semiregular_invokable_t<Pred> pred_;
+            semiregular_t<invokable_t<Pred>> pred_;
             optional<range_iterator_t<Rng>> begin_;
 
             struct adaptor
@@ -103,8 +103,8 @@ namespace ranges
               , pred_(that.pred_)
               , begin_{}
             {}
-            remove_if_view(Rng && rng, Pred pred)
-              : range_adaptor_t<remove_if_view>{std::forward<Rng>(rng)}
+            remove_if_view(Rng rng, Pred pred)
+              : range_adaptor_t<remove_if_view>{std::move(rng)}
               , pred_(invokable(std::move(pred)))
               , begin_{}
             {}
@@ -140,14 +140,14 @@ namespace ranges
                 template<typename Rng, typename Pred>
                 using Concept = meta::and_<
                     InputIterable<Rng>,
-                    InvokablePredicate<Pred, range_common_reference_t<Rng>>>;
+                    IndirectInvokablePredicate<Pred, range_iterator_t<Rng>>>;
 
                 template<typename Rng, typename Pred,
                     CONCEPT_REQUIRES_(Concept<Rng, Pred>())>
-                remove_if_view<Rng, Pred>
+                remove_if_view<all_t<Rng>, Pred>
                 operator()(Rng && rng, Pred pred) const
                 {
-                    return {std::forward<Rng>(rng), std::move(pred)};
+                    return {all(std::forward<Rng>(rng)), std::move(pred)};
                 }
             #ifndef RANGES_DOXYGEN_INVOKED
                 template<typename Rng, typename Pred,
@@ -157,7 +157,7 @@ namespace ranges
                     CONCEPT_ASSERT_MSG(InputIterable<Rng>(),
                         "The first argument to view::remove_if must be a model of the "
                         "InputIterable concept");
-                    CONCEPT_ASSERT_MSG(InvokablePredicate<Pred, range_common_reference_t<Rng>>(),
+                    CONCEPT_ASSERT_MSG(IndirectInvokablePredicate<Pred, range_iterator_t<Rng>>(),
                         "The second argument to view::remove_if must be callable with "
                         "a value of the range, and the return type must be convertible "
                         "to bool");
@@ -167,7 +167,10 @@ namespace ranges
 
             /// \relates remove_if_fn
             /// \ingroup group-views
-            constexpr view<remove_if_fn> remove_if{};
+            namespace
+            {
+                constexpr auto&& remove_if = static_const<view<remove_if_fn>>::value;
+            }
         }
         /// @}
     }

@@ -18,10 +18,10 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -32,13 +32,8 @@ namespace ranges
         struct count_if_fn
         {
             template<typename I, typename S, typename R, typename P = ident,
-                typename V0 = iterator_common_reference_t<I>,
-                typename X = concepts::Invokable::result_t<P, V0>,
-                CONCEPT_REQUIRES_(
-                    InputIterator<I>() && IteratorRange<I, S>() &&
-                    Invokable<P, V0>() &&
-                    InvokablePredicate<R, X>()
-                )>
+                CONCEPT_REQUIRES_(InputIterator<I>() && IteratorRange<I, S>() &&
+                    IndirectInvokablePredicate<R, Project<I, P> >())>
             iterator_difference_t<I>
             operator()(I begin, S end, R pred_, P proj_ = P{}) const
             {
@@ -53,13 +48,7 @@ namespace ranges
 
             template<typename Rng, typename R, typename P = ident,
                 typename I = range_iterator_t<Rng>,
-                typename V0 = iterator_common_reference_t<I>,
-                typename X = concepts::Invokable::result_t<P, V0>,
-                CONCEPT_REQUIRES_(
-                    InputIterable<Rng>() &&
-                    Invokable<P, V0>() &&
-                    InvokablePredicate<R, X>()
-                )>
+                CONCEPT_REQUIRES_(InputIterable<Rng>() && IndirectInvokablePredicate<R, Project<I, P> >())>
             iterator_difference_t<I>
             operator()(Rng &&rng, R pred, P proj = P{}) const
             {
@@ -69,7 +58,10 @@ namespace ranges
 
         /// \sa `count_if_fn`
         /// \ingroup group-algorithms
-        constexpr with_braced_init_args<count_if_fn> count_if{};
+        namespace
+        {
+            constexpr auto&& count_if = static_const<with_braced_init_args<count_if_fn>>::value;
+        }
 
         /// @}
     } // namespace v3

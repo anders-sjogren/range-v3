@@ -18,10 +18,13 @@
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_adaptor.hpp>
 #include <range/v3/range.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/unreachable.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
-#include <range/v3/utility/pipeable.hpp>
+#include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/view.hpp>
+#include <range/v3/view/all.hpp>
 
 namespace ranges
 {
@@ -56,8 +59,8 @@ namespace ranges
             }
         public:
             delimit_view() = default;
-            delimit_view(Rng && rng, Val value)
-              : range_adaptor_t<delimit_view>{std::forward<Rng>(rng)}
+            delimit_view(Rng rng, Val value)
+              : range_adaptor_t<delimit_view>{std::move(rng)}
               , value_(std::move(value))
             {}
         };
@@ -82,10 +85,10 @@ namespace ranges
 
                 template<typename Rng, typename Val,
                     CONCEPT_REQUIRES_(Concept<Rng, Val>())>
-                delimit_view<Rng, Val>
+                delimit_view<all_t<Rng>, Val>
                 operator()(Rng && rng, Val value) const
                 {
-                    return {std::forward<Rng>(rng), std::move(value)};
+                    return {all(std::forward<Rng>(rng)), std::move(value)};
                 }
             #ifndef RANGES_DOXYGEN_INVOKED
                 template<typename Rng, typename Val,
@@ -117,7 +120,10 @@ namespace ranges
 
             /// \relates delimit_fn
             /// \ingroup group-views
-            constexpr delimit_fn delimit{};
+            namespace
+            {
+                constexpr auto&& delimit = static_const<delimit_fn>::value;
+            }
         }
         /// @}
     }

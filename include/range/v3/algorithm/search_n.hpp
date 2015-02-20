@@ -27,23 +27,22 @@
 #include <range/v3/distance.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// ingroup group-concepts
-        template<typename I, typename V, typename C = equal_to, typename P = ident,
-            typename IV = iterator_common_reference_t<I>,
-            typename X1 = concepts::Invokable::result_t<P, IV>>
+        template<typename I, typename V, typename C = equal_to, typename P = ident>
         using Searchnable = meta::fast_and<
             ForwardIterator<I>,
-            Invokable<P, IV>,
-            InvokableRelation<C, X1, V>>;
+            IndirectInvokableRelation<C, Project<I, P>, V const *>>;
 
         /// \addtogroup group-algorithms
         /// @{
@@ -99,7 +98,7 @@ namespace ranges
                     while(true)
                     {
                         if(d < count)  // return the end if we've run out of room
-                            return next_to(recounted(begin_, std::move(begin), d_ - d), std::move(end));
+                            return ranges::next(recounted(begin_, std::move(begin), d_ - d), std::move(end));
                         if(pred(proj(*begin), val))
                             break;
                         ++begin;
@@ -191,7 +190,10 @@ namespace ranges
 
         /// \sa `search_n_fn`
         /// \ingroup group-algorithms
-        constexpr search_n_fn search_n{};
+        namespace
+        {
+            constexpr auto&& search_n = static_const<search_n_fn>::value;
+        }
 
         /// @}
     } // namespace v3

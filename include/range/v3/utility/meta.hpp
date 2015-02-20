@@ -34,6 +34,13 @@ namespace ranges
             template<typename...Ts>
             struct list;
 
+            /// \brief An empty type used for various things.
+            struct nil_
+            {};
+            #ifndef nil
+            using nil = nil_;
+            #endif
+
             /// \brief "Evaluate" a metafunction by returning the nested \c T::type alias.
             template<typename T>
             using eval = typename T::type;
@@ -42,13 +49,66 @@ namespace ranges
             template<typename F, typename...Args>
             using apply = typename F::template apply<Args...>;
 
+            /// \brief A Metafunction Class that always returns \c T.
+            template<typename T>
+            struct always
+            {
+            private:
+                // Redirect through a class template for compilers that have not
+                // yet implemented CWG 1558:
+                // <http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1558>
+                template<typename...>
+                struct impl
+                {
+                    using type = T;
+                };
+            public:
+                template<typename...Ts>
+                using apply = eval<impl<Ts...>>;
+            };
+
+            /// \brief An alias for `void`.
+            template<typename...Ts>
+            using void_ = apply<always<void>, Ts...>;
+
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename, typename = void>
+                struct has_type_
+                {
+                    using type = std::false_type;
+                };
+
+                template<typename T>
+                struct has_type_<T, void_<typename T::type>>
+                {
+                    using type = std::true_type;
+                };
+
+                template<typename, typename, typename = void>
+                struct lazy_apply_
+                {};
+
+                template<typename F, typename...Ts>
+                struct lazy_apply_<F, list<Ts...>, void_<apply<F, Ts...>>>
+                {
+                    using type = apply<F, Ts...>;
+                };
+            }
+            /// \endcond
+
+            /// \brief An alias for `std::true_type` if `T::type` exists and names a type;
+            ///        otherwise, it's an alias for `std::false_type`.
+            template<typename T>
+            using has_type = eval<meta_detail::has_type_<T>>;
+
             /// \brief A metafunction that evaluates the Metafunction Class `F` with
             /// the arguments \c Args.
             template<typename F, typename...Args>
             struct lazy_apply
-            {
-                using type = apply<F, Args...>;
-            };
+              : meta_detail::lazy_apply_<F, list<Args...>>
+            {};
 
             /// \brief An integral constant wrapper for \c std::size_t.
             template<std::size_t N>
@@ -75,24 +135,19 @@ namespace ranges
             struct quote
             {
             private:
+                template<typename, typename = quote, typename = void>
+                struct impl
+                {};
+                template<typename...Ts, template<typename...> class D>
+                struct impl<list<Ts...>, quote<D>, void_<D<Ts...>>>
+                {
+                    using type = D<Ts...>;
+                };
+            public:
                 // Indirection here needed to avoid Core issue 1430
                 // http://open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#1430
                 template<typename...Ts>
-                struct impl
-                {
-                    using type = C<Ts...>;
-                };
-            public:
-                template<typename...Ts>
-                using apply = eval<impl<Ts...>>;
-            };
-
-            /// \brief Turn a metafunction into a Metafunction Class.
-            template<template<typename...> class C>
-            struct quote_trait
-            {
-                template<typename...Ts>
-                using apply = eval<apply<quote<C>, Ts...> >;
+                using apply = eval<impl<list<Ts...>>>;
             };
 
             /// \brief Turn a class template or alias template into a
@@ -101,16 +156,27 @@ namespace ranges
             struct quote_i
             {
             private:
-                // Indirection here needed to avoid Core issue 1430
-                // http://open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#1430
-                template<typename ...Ts>
+                template<typename, typename = quote_i, typename = void>
                 struct impl
+                {};
+                template<typename...Ts, typename U, template<U...> class D>
+                struct impl<list<Ts...>, quote_i<U, D>, void_<D<Ts::type::value...>>>
                 {
-                    using type = F<Ts::type::value...>;
+                    using type = D<Ts::type::value...>;
                 };
             public:
+                // Indirection here needed to avoid Core issue 1430
+                // http://open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#1430
                 template<typename...Ts>
-                using apply = eval<impl<Ts...>>;
+                using apply = eval<impl<list<Ts...>>>;
+            };
+
+            /// \brief Turn a metafunction into a Metafunction Class.
+            template<template<typename...> class C>
+            struct quote_trait
+            {
+                template<typename...Ts>
+                using apply = eval<apply<quote<C>, Ts...>>;
             };
 
             /// \brief Turn a metafunction into a Metafunction Class.
@@ -118,7 +184,7 @@ namespace ranges
             struct quote_trait_i
             {
                 template<typename...Ts>
-                using apply = eval<apply<quote_i<T, C>, Ts...> >;
+                using apply = eval<apply<quote_i<T, C>, Ts...>>;
             };
 
             /// \brief Compose the Metafunction Classes in the parameter pack
@@ -139,14 +205,6 @@ namespace ranges
             {
                 template<typename...Ts>
                 using apply = apply<F0, apply<compose<Fs...>, Ts...>>;
-            };
-
-            /// \brief A Metafunction Class that always returns \c T.
-            template<typename T>
-            struct always
-            {
-                template<typename...>
-                using apply = T;
             };
 
             /// \brief A Metafunction Class partially applies the Metafunction
@@ -177,15 +235,13 @@ namespace ranges
 
             template<typename F, template<typename...> class T, typename ...Ts>
             struct lazy_apply_list<F, T<Ts...>>
-            {
-                using type = apply<F, Ts...>;
-            };
+              : lazy_apply<F, Ts...>
+            {};
 
             template<typename F, typename T, T...Is>
             struct lazy_apply_list<F, integer_sequence<T, Is...>>
-            {
-                using type = apply<F, std::integral_constant<T, Is>...>;
-            };
+              : lazy_apply<F, std::integral_constant<T, Is>...>
+            {};
 
             /// \brief Applies the Metafunction Class `F` using the types in
             /// the type list \c List as arguments.
@@ -196,19 +252,13 @@ namespace ranges
             /// bundles them into a type list, and then calls the Metafunction
             /// Class `F` with the type list.
             template<typename F, typename Q = quote<list>>
-            struct curry
-              : compose<F, Q>
-            {};
+            using curry = compose<F, Q>;
 
             /// \brief A Metafunction Class that takes a type list,
             /// unpacks the types, and then calls the Metafunction
             /// Class `F` with types.
             template<typename F>
-            struct uncurry
-            {
-                template<typename T>
-                using apply = eval<lazy_apply_list<F, T>>;
-            };
+            using uncurry = bind_front<quote<apply_list>, F>;
 
             /// \brief A Metafunction Class that reverses the order of the first
             /// two arguments.
@@ -221,9 +271,8 @@ namespace ranges
                 {};
                 template<typename A, typename B, typename ...Ts>
                 struct impl<A, B, Ts...>
-                {
-                    using type = apply<F, B, A, Ts...>;
-                };
+                  : lazy_apply<F, B, A, Ts...>
+                {};
             public:
                 template<typename ...Ts>
                 using apply = eval<impl<Ts...>>;
@@ -262,24 +311,6 @@ namespace ranges
             /// \cond
             namespace meta_detail
             {
-                // Thanks to  Louis Dionne for this clever hack for a quick-to-compile
-                // implementation of and_c and or_c
-                std::true_type fast_and_impl_();
-
-                template<typename ...T>
-                std::true_type fast_and_impl_(T*...);
-
-                template<typename ...T>
-                std::false_type fast_and_impl_(T...);
-
-                std::false_type fast_or_impl_();
-
-                template<typename ...T>
-                std::false_type fast_or_impl_(T*...);
-
-                template<typename ...T>
-                std::true_type fast_or_impl_(T...);
-
                 template<typename ...Bools>
                 struct _and_;
 
@@ -311,39 +342,43 @@ namespace ranges
             /// \addtogroup group-meta
             /// @{
 
-            /// \brief Logically and together all the Boolean parameters
-            template<bool ...Bools>
-            using and_c =
-                decltype(meta_detail::fast_and_impl_(if_c<Bools, int*, int>{}...));
-
-            /// \brief Logically or together all the Boolean parameters
-            template<bool ...Bools>
-            using or_c =
-                decltype(meta_detail::fast_or_impl_(if_c<Bools, int, int*>{}...));
-
             /// \brief Logically negate the Boolean parameter
             template<bool Bool>
             using not_c = bool_<!Bool>;
-
-            /// \brief Logically and together all the integral constant-wrapped Boolean
-            /// parameters, <i>without</i> doing short-circuiting.
-            template<typename...Bools>
-            using fast_and = and_c<Bools::type::value...>;
-
-            /// \brief Logically or together all the integral constant-wrapped Boolean
-            /// parameters, <i>without</i> doing short-circuiting.
-            template<typename...Bools>
-            using fast_or = or_c<Bools::type::value...>;
 
             /// \brief Logically negate the integral constant-wrapped Boolean
             /// parameter.
             template<typename Bool>
             using not_ = not_c<Bool::type::value>;
 
+            /// \brief Logically and together all the Boolean parameters
+            template<bool ...Bools>
+            using and_c =
+                std::is_same<
+                    integer_sequence<bool, Bools...>,
+                    integer_sequence<bool, (Bools || true)...>>;
+
+            /// \brief Logically and together all the integral constant-wrapped Boolean
+            /// parameters, <i>without</i> doing short-circuiting.
+            template<typename...Bools>
+            using fast_and = and_c<Bools::type::value...>;
+
             /// \brief Logically and together all the integral constant-wrapped Boolean
             /// parameters, with short-circuiting.
             template<typename...Bools>
             using and_ = eval<meta_detail::_and_<Bools...>>;
+
+            /// \brief Logically or together all the Boolean parameters
+            template<bool ...Bools>
+            using or_c = not_<
+                std::is_same<
+                    integer_sequence<bool, Bools...>,
+                    integer_sequence<bool, (Bools && false)...>>>;
+
+            /// \brief Logically or together all the integral constant-wrapped Boolean
+            /// parameters, <i>without</i> doing short-circuiting.
+            template<typename...Bools>
+            using fast_or = or_c<Bools::type::value...>;
 
             /// \brief Logically or together all the integral constant-wrapped Boolean
             /// parameters, with short-circuiting.
@@ -374,50 +409,61 @@ namespace ranges
             /// @}
 
             ////////////////////////////////////////////////////////////////////////////////////
-            // list_cat
+            // concat
             /// \cond
             namespace meta_detail
             {
-                template<typename ListOfLists>
-                struct list_cat_
+                template<typename...Lists>
+                struct concat_
                 {};
 
                 template<>
-                struct list_cat_<list<>>
+                struct concat_<>
                 {
                     using type = list<>;
                 };
 
                 template<typename...List1>
-                struct list_cat_<list<list<List1...>>>
+                struct concat_<list<List1...>>
                 {
                     using type = list<List1...>;
                 };
 
                 template<typename ...List1, typename ...List2>
-                struct list_cat_<list<list<List1...>, list<List2...>>>
+                struct concat_<list<List1...>, list<List2...>>
                 {
                     using type = list<List1..., List2...>;
                 };
 
                 template<typename ...List1, typename ...List2, typename...List3>
-                struct list_cat_<list<list<List1...>, list<List2...>, list<List3...>>>
+                struct concat_<list<List1...>, list<List2...>, list<List3...>>
                 {
                     using type = list<List1..., List2..., List3...>;
                 };
 
                 template<typename ...List1, typename ...List2, typename...List3, typename...Rest>
-                struct list_cat_<list<list<List1...>, list<List2...>, list<List3...>, Rest...>>
-                  : list_cat_<list<list<List1..., List2..., List3...>, Rest...>>
+                struct concat_<list<List1...>, list<List2...>, list<List3...>, Rest...>
+                  : concat_<list<List1..., List2..., List3...>, Rest...>
                 {};
             }
             /// \endcond
 
-            /// \brief An integral constant wrapper that is the size of the \c meta::list
-            /// \c List
+            /// \brief Concatenates several lists into a single list.
+            /// \pre The parameters must all be instantiations of \c meta::list.
+            /// \note Has complexity O(L), where L is the number of lists in the list
+            ///     of lists.
+            /// \ingroup group-meta
+            template<typename...Lists>
+            using concat = eval<meta_detail::concat_<Lists...>>;
+
+            /// \brief Joins a list of lists into a single list.
+            /// \pre The parameter must be an instantiation of \c meta::list\<T...\>
+            ///     where each \c T is itself an instantiation of \c meta::list.
+            /// \note Has complexity O(L), where L is the number of lists in the list
+            ///     of lists.
             /// \ingroup group-meta
             template<typename ListOfLists>
-            using list_cat = eval<meta_detail::list_cat_<ListOfLists>>;
+            using join = apply_list<quote<concat>, ListOfLists>;
 
             ////////////////////////////////////////////////////////////////////////////////////
             // repeat_n
@@ -427,12 +473,10 @@ namespace ranges
                 template<std::size_t N, typename T>
                 struct repeat_n_c_
                 {
-                    using type =
-                        list_cat<
-                            list<
-                                eval<repeat_n_c_<N / 2, T>>,
-                                eval<repeat_n_c_<N / 2, T>>,
-                                eval<repeat_n_c_<N % 2, T>>>>;
+                    using type = concat<
+                        eval<repeat_n_c_<N / 2, T>>,
+                        eval<repeat_n_c_<N / 2, T>>,
+                        eval<repeat_n_c_<N % 2, T>>>;
                 };
 
                 template<typename T>
@@ -466,15 +510,13 @@ namespace ranges
             /// \cond
             namespace meta_detail
             {
-                struct empty {};
-
                 template<typename VoidPtrs>
                 struct list_element_impl_;
 
                 template<typename ...VoidPtrs>
                 struct list_element_impl_<list<VoidPtrs...>>
                 {
-                    static empty eval(...);
+                    static nil_ eval(...);
 
                     template<typename T, typename ...Us>
                     static T eval(VoidPtrs..., T *, Us *...);
@@ -515,13 +557,13 @@ namespace ranges
                 template<typename VoidPtrs>
                 struct drop_impl_
                 {
-                    static empty eval(...);
+                    static nil_ eval(...);
                 };
 
                 template<typename ...VoidPtrs>
                 struct drop_impl_<list<VoidPtrs...>>
                 {
-                    static empty eval(...);
+                    static nil_ eval(...);
 
                     template<typename...Ts>
                     static id<list<Ts...>> eval(VoidPtrs..., id<Ts> *...);
@@ -834,7 +876,7 @@ namespace ranges
             /// \cond
             namespace meta_detail
             {
-                template<typename List, typename State, typename Fun>
+                template<typename, typename, typename, typename = void>
                 struct foldl_
                 {};
 
@@ -845,7 +887,7 @@ namespace ranges
                 };
 
                 template<typename Head, typename ...List, typename State, typename Fun>
-                struct foldl_<list<Head, List...>, State, Fun>
+                struct foldl_<list<Head, List...>, State, Fun, void_<apply<Fun, State, Head>>>
                   : foldl_<list<List...>, apply<Fun, State, Head>, Fun>
                 {};
             }
@@ -858,12 +900,17 @@ namespace ranges
             template<typename List, typename State, typename Fun>
             using foldl = eval<meta_detail::foldl_<List, State, Fun>>;
 
+            /// \brief An alias for `meta::foldl`. Complexity: O(N)
+            /// \ingroup group-meta
+            template<typename List, typename State, typename Fun>
+            using accumulate = foldl<List, State, Fun>;
+
             ////////////////////////////////////////////////////////////////////////////////////
             // foldr
             /// \cond
             namespace meta_detail
             {
-                template<typename List, typename State, typename Fun>
+                template<typename, typename, typename, typename = void>
                 struct foldr_
                 {};
 
@@ -874,10 +921,9 @@ namespace ranges
                 };
 
                 template<typename Head, typename ...List, typename State, typename Fun>
-                struct foldr_<list<Head, List...>, State, Fun>
-                {
-                    using type = apply<Fun, eval<foldr_<list<List...>, State, Fun>>, Head>;
-                };
+                struct foldr_<list<Head, List...>, State, Fun, void_<eval<foldr_<list<List...>, State, Fun>>>>
+                  : lazy_apply<Fun, eval<foldr_<list<List...>, State, Fun>>, Head>
+                {};
             }
             /// \endcond
 
@@ -894,21 +940,39 @@ namespace ranges
             /// \cond
             namespace meta_detail
             {
-                template<typename List, typename Fun, typename = void>
-                struct transform_
+                template<typename, typename, typename = void>
+                struct transform1_
                 {};
 
-                template<typename ...List, typename Fun>
-                struct transform_<list<List...>, Fun, void>
+                template<typename...List, typename Fun>
+                struct transform1_<list<List...>, Fun, void_<list<apply<Fun, List>...>>>
                 {
                     using type = list<apply<Fun, List>...>;
                 };
 
+                template<typename, typename, typename, typename = void>
+                struct transform2_
+                {};
+
                 template<typename ...List0, typename ...List1, typename Fun>
-                struct transform_<list<List0...>, list<List1...>, Fun>
+                struct transform2_<list<List0...>, list<List1...>, Fun, void_<list<apply<Fun, List0, List1>...>>>
                 {
                     using type = list<apply<Fun, List0, List1>...>;
                 };
+
+                template<typename...Args>
+                struct transform_
+                {};
+
+                template<typename List, typename Fun>
+                struct transform_<List, Fun>
+                  : transform1_<List, Fun>
+                {};
+
+                template<typename List0, typename List1, typename Fun>
+                struct transform_<List0, List1, Fun>
+                  : transform2_<List0, List1, Fun>
+                {};
             }
             /// \endcond
 
@@ -919,8 +983,8 @@ namespace ranges
             /// constructed with the results of calling \c Fun with each element in the
             /// lists, pairwise. Complexity: O(N)
             /// \ingroup group-meta
-            template<typename List, typename Fun, typename Dummy = void>
-            using transform = eval<meta_detail::transform_<List, Fun, Dummy>>;
+            template<typename ...Args>
+            using transform = eval<meta_detail::transform_<Args...>>;
 
             ////////////////////////////////////////////////////////////////////////////////////
             // zip_with
@@ -960,9 +1024,8 @@ namespace ranges
                 // http://open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#1430
                 template<typename Sequence>
                 struct as_list_
-                {
-                    using type = apply<uncurry<curry<quote_trait<id>>>, uncvref_t<Sequence>>;
-                };
+                  : lazy_apply<uncurry<curry<quote_trait<id>>>, uncvref_t<Sequence>>
+                {};
             }
             /// \endcond
 
@@ -1004,6 +1067,33 @@ namespace ranges
             /// in \c meta::list \c List; \c false, otherwise. Complexity: O(N)
             template<typename List, typename F>
             using none_of = empty<find_if<List, F>>;
+
+            ////////////////////////////////////////////////////////////////////////////////////
+            // cartesian_product
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename M2, typename M>
+                struct cartesian_product_fn
+                {
+                    template<typename X>
+                    struct lambda0
+                    {
+                        template<typename Xs>
+                        using lambda1 = list<push_front<Xs, X>>;
+                        using type = join<transform<M2, quote<lambda1>>>;
+                    };
+                    using type = join<transform<M, quote_trait<lambda0>>>;
+                };
+            }
+            /// \endcond
+
+            /// \brief Given a list of lists, return a new list of lists that is the
+            /// Cartesian Product. Like the `sequence` function from the Haskell Prelude.
+            /// Complexity: O(N*M)
+            template<typename ListOfLists>
+            using cartesian_product =
+                foldr<ListOfLists, list<list<>>, quote_trait<meta_detail::cartesian_product_fn>>;
 
             /// \cond
             ////////////////////////////////////////////////////////////////////////////////////
@@ -1103,5 +1193,146 @@ namespace ranges
         }
     }
 }
+
+// Make meta::quote work consistently with libc++ containers
+// Works around:
+//    http://llvm.org/bugs/show_bug.cgi?id=22601 and
+//    http://llvm.org/bugs/show_bug.cgi?id=22605
+#if defined(__clang__)          && \
+    defined(_LIBCPP_VERSION)    && \
+    _LIBCPP_VERSION <= 1101     && \
+    !defined(RANGES_NO_STD_FORWARD_DECLARACTIONS)
+
+_LIBCPP_BEGIN_NAMESPACE_STD
+    template <class, class> struct _LIBCPP_TYPE_VIS_ONLY pair;
+    template <class> struct _LIBCPP_TYPE_VIS_ONLY hash;
+    template <class> struct _LIBCPP_TYPE_VIS_ONLY less;
+    template <class> struct _LIBCPP_TYPE_VIS_ONLY equal_to;
+    template <class> struct _LIBCPP_TYPE_VIS_ONLY char_traits;
+    template <class, class> class _LIBCPP_TYPE_VIS_ONLY list;
+    template <class, class> class _LIBCPP_TYPE_VIS_ONLY forward_list;
+    template <class, class> class _LIBCPP_TYPE_VIS_ONLY vector;
+    template <class, class> class _LIBCPP_TYPE_VIS_ONLY deque;
+    template <class, class, class> class _LIBCPP_TYPE_VIS_ONLY basic_string;
+    template <class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY map;
+    template <class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY multimap;
+    template <class, class, class> class _LIBCPP_TYPE_VIS_ONLY set;
+    template <class, class, class> class _LIBCPP_TYPE_VIS_ONLY multiset;
+    template <class, class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_map;
+    template <class, class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_multimap;
+    template <class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_set;
+    template <class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_multiset;
+    template <class, class> class _LIBCPP_TYPE_VIS_ONLY queue;
+    template <class, class, class> class _LIBCPP_TYPE_VIS_ONLY priority_queue;
+    template <class, class> class _LIBCPP_TYPE_VIS_ONLY stack;
+_LIBCPP_END_NAMESPACE_STD
+
+namespace ranges
+{
+    inline namespace v3
+    {
+        namespace meta
+        {
+            namespace meta_detail
+            {
+                template<typename T, typename A = std::allocator<T>>
+                using std_list = std::list<T, A>;
+                template<typename T, typename A = std::allocator<T>>
+                using std_forward_list = std::forward_list<T, A>;
+                template<typename T, typename A = std::allocator<T>>
+                using std_vector = std::vector<T, A>;
+                template<typename T, typename A = std::allocator<T>>
+                using std_deque = std::deque<T, A>;
+                template<typename T, typename C = std::char_traits<T>, typename A = std::allocator<T>>
+                using std_basic_string = std::basic_string<T, C, A>;
+                template<typename K, typename V, typename C = std::less<K>, typename A = std::allocator<std::pair<K const, V>>>
+                using std_map = std::map<K, V, C, A>;
+                template<typename K, typename V, typename C = std::less<K>, typename A = std::allocator<std::pair<K const, V>>>
+                using std_multimap = std::multimap<K, V, C, A>;
+                template<typename K, typename C = std::less<K>, typename A = std::allocator<K>>
+                using std_set = std::set<K, C, A>;
+                template<typename K, typename C = std::less<K>, typename A = std::allocator<K>>
+                using std_multiset = std::multiset<K, C, A>;
+                template<typename K, typename V, typename H = std::hash<K>, typename C = std::equal_to<K>, typename A = std::allocator<std::pair<K const, V>>>
+                using std_unordered_map = std::unordered_map<K, V, H, C, A>;
+                template<typename K, typename V, typename H = std::hash<K>, typename C = std::equal_to<K>, typename A = std::allocator<std::pair<K const, V>>>
+                using std_unordered_multimap = std::unordered_multimap<K, V, H, C, A>;
+                template<typename K, typename H = std::hash<K>, typename C = std::equal_to<K>, typename A = std::allocator<K>>
+                using std_unordered_set = std::unordered_set<K, H, C, A>;
+                template<typename K, typename H = std::hash<K>, typename C = std::equal_to<K>, typename A = std::allocator<K>>
+                using std_unordered_multiset = std::unordered_multiset<K, H, C, A>;
+                template<typename T, typename C = std_deque<T>>
+                using std_queue = std::queue<T, C>;
+                template<typename T, typename C = std_vector<T>, class D = std::less<typename C::value_type>>
+                using std_priority_queue = std::priority_queue<T, C, D>;
+                template<typename T, typename C = std_deque<T>>
+                using std_stack = std::stack<T, C>;
+            }
+
+            template<>
+            struct quote< ::std::list >
+              : quote< meta_detail::std_list >
+            {};
+            template<>
+            struct quote< ::std::forward_list >
+              : quote< meta_detail::std_forward_list >
+            {};
+            template<>
+            struct quote< ::std::vector >
+              : quote< meta_detail::std_vector >
+            {};
+            template<>
+            struct quote< ::std::basic_string >
+              : quote< meta_detail::std_basic_string >
+            {};
+            template<>
+            struct quote< ::std::map >
+              : quote< meta_detail::std_map >
+            {};
+            template<>
+            struct quote< ::std::multimap >
+              : quote< meta_detail::std_multimap >
+            {};
+            template<>
+            struct quote< ::std::set >
+              : quote< meta_detail::std_set >
+            {};
+            template<>
+            struct quote< ::std::multiset >
+              : quote< meta_detail::std_multiset >
+            {};
+            template<>
+            struct quote< ::std::unordered_map >
+              : quote< meta_detail::std_unordered_map >
+            {};
+            template<>
+            struct quote< ::std::unordered_multimap >
+              : quote< meta_detail::std_unordered_multimap >
+            {};
+            template<>
+            struct quote< ::std::unordered_set >
+              : quote< meta_detail::std_unordered_set >
+            {};
+            template<>
+            struct quote< ::std::unordered_multiset >
+              : quote< meta_detail::std_unordered_multiset >
+            {};
+            template<>
+            struct quote< ::std::queue >
+              : quote< meta_detail::std_queue >
+            {};
+            template<>
+            struct quote< ::std::priority_queue >
+              : quote< meta_detail::std_priority_queue >
+            {};
+            template<>
+            struct quote< ::std::stack >
+              : quote< meta_detail::std_stack >
+            {};
+        }
+    }
+}
+
+#endif
 
 #endif

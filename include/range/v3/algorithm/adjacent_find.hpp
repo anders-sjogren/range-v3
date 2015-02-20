@@ -17,9 +17,9 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_concepts.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -36,12 +36,8 @@ namespace ranges
             /// \pre `Rng` is a model of the `Iterable` concept
             /// \pre `C` is a model of the `BinaryPredicate` concept
             template<typename I, typename S, typename C = equal_to, typename P = ident,
-                typename V = iterator_common_reference_t<I>,
-                CONCEPT_REQUIRES_(
-                    ForwardIterator<I>() && IteratorRange<I, S>() &&
-                    Invokable<P, V>() &&
-                    InvokableRelation<C, concepts::Invokable::result_t<P, V>>()
-                )>
+                CONCEPT_REQUIRES_(ForwardIterator<I>() && IteratorRange<I, S>() &&
+                    IndirectInvokableRelation<C, Project<I, P>>())>
             I
             operator()(I begin, S end, C pred_ = C{}, P proj_ = P{}) const
             {
@@ -59,12 +55,8 @@ namespace ranges
             /// \overload
             template<typename Rng, typename C = equal_to, typename P = ident,
                 typename I = range_iterator_t<Rng>,
-                typename V = iterator_common_reference_t<I>,
-                CONCEPT_REQUIRES_(
-                    ForwardIterable<Rng &>() &&
-                    Invokable<P, V>() &&
-                    InvokableRelation<C, concepts::Invokable::result_t<P, V>>()
-                )>
+                CONCEPT_REQUIRES_(ForwardIterable<Rng &>() &&
+                    IndirectInvokableRelation<C, Project<I, P>>())>
             I
             operator()(Rng &rng, C pred = C{}, P proj = P{}) const
             {
@@ -74,7 +66,10 @@ namespace ranges
 
         /// \sa `adjacent_find_fn`
         /// \ingroup group-algorithms
-        constexpr adjacent_find_fn adjacent_find {};
+        namespace
+        {
+            constexpr auto&& adjacent_find = static_const<adjacent_find_fn>::value;
+        }
 
         /// @}
 

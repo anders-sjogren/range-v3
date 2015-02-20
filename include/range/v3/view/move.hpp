@@ -22,8 +22,11 @@
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_adaptor.hpp>
 #include <range/v3/range_concepts.hpp>
-#include <range/v3/utility/pipeable.hpp>
+#include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/view.hpp>
+#include <range/v3/view/all.hpp>
+
 namespace ranges
 {
     inline namespace v3
@@ -38,11 +41,12 @@ namespace ranges
             friend range_access;
             struct adaptor : adaptor_base
             {
-            private:
-                using adaptor_base::prev;
-            public:
-                using single_pass = std::true_type;
+                using value_type = range_value_t<Rng>;
                 range_rvalue_reference_t<Rng> current(range_iterator_t<Rng> it) const
+                {
+                    return iter_move(it);
+                }
+                range_rvalue_reference_t<Rng> indirect_move(range_iterator_t<Rng> it) const
                 {
                     return iter_move(it);
                 }
@@ -57,8 +61,8 @@ namespace ranges
             }
         public:
             move_view() = default;
-            move_view(Rng &&rng)
-              : range_adaptor_t<move_view>{std::forward<Rng>(rng)}
+            explicit move_view(Rng rng)
+              : range_adaptor_t<move_view>{std::move(rng)}
             {}
             CONCEPT_REQUIRES(SizedIterable<Rng>())
             range_size_t<Rng> size() const
@@ -73,9 +77,9 @@ namespace ranges
             {
                 template<typename Rng,
                     CONCEPT_REQUIRES_(InputIterable<Rng>())>
-                move_view<Rng> operator()(Rng && rng) const
+                move_view<all_t<Rng>> operator()(Rng && rng) const
                 {
-                    return move_view<Rng>{std::forward<Rng>(rng)};
+                    return move_view<all_t<Rng>>{all(std::forward<Rng>(rng))};
                 }
             #ifndef RANGES_DOXYGEN_INVOKED
                 template<typename Rng,
@@ -91,7 +95,10 @@ namespace ranges
 
             /// \relates move_fn
             /// \ingroup group-views
-            constexpr view<move_fn> move{};
+            namespace
+            {
+                constexpr auto&& move = static_const<view<move_fn>>::value;
+            }
         }
         /// @}
     }

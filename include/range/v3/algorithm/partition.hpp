@@ -25,25 +25,23 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/swap.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename C, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename C, typename P = ident>
         using Partitionable = meta::fast_and<
             ForwardIterator<I>,
             Permutable<I>,
-            Invokable<P, V>,
-            InvokablePredicate<C, X>>;
+            IndirectInvokablePredicate<C, Project<I, P>>>;
 
         /// \addtogroup group-algorithms
         /// @{
@@ -79,7 +77,7 @@ namespace ranges
             {
                 auto && pred = invokable(pred_);
                 auto && proj = invokable(proj_);
-                I end = next_to(begin, end_);
+                I end = ranges::next(begin, end_);
                 while(true)
                 {
                     while(true)
@@ -120,7 +118,10 @@ namespace ranges
 
         /// \sa `partition_fn`
         /// \ingroup group-algorithms
-        constexpr partition_fn partition{};
+        namespace
+        {
+            constexpr auto&& partition = static_const<partition_fn>::value;
+        }
 
         /// @}
     } // namespace v3

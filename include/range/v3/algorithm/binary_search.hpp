@@ -19,11 +19,11 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/algorithm/lower_bound.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -37,13 +37,10 @@ namespace ranges
             ///
             /// range-based version of the \c binary_search std algorithm
             ///
-            /// \pre `Rng` is a model of the `Rng` concept
-            /// \pre `C` is a model of the `InvokableRelation` concept
-            template<typename I, typename S, typename V2, typename C = ordered_less, typename P = ident,
-                CONCEPT_REQUIRES_(
-                    IteratorRange<I, S>() &&
-                    BinarySearchable<I, V2, C, P>()
-                )>
+            /// \pre `Rng` is a model of the `Iterable` concept
+            template<typename I, typename S, typename V2, typename C = ordered_less,
+                typename P = ident,
+                CONCEPT_REQUIRES_(IteratorRange<I, S>() && BinarySearchable<I, V2, C, P>())>
             bool
             operator()(I begin, S end, V2 const &val, C pred = C{}, P proj = P{}) const
             {
@@ -56,10 +53,7 @@ namespace ranges
             /// \overload
             template<typename Rng, typename V2, typename C = ordered_less, typename P = ident,
                 typename I = range_iterator_t<Rng>,
-                CONCEPT_REQUIRES_(
-                    Iterable<Rng>() &&
-                    BinarySearchable<I, V2, C, P>()
-                )>
+                CONCEPT_REQUIRES_(Iterable<Rng>() && BinarySearchable<I, V2, C, P>())>
             bool
             operator()(Rng &&rng, V2 const &val, C pred = C{}, P proj = P{}) const
             {
@@ -71,7 +65,10 @@ namespace ranges
 
         /// \sa `binary_search_fn`
         /// \ingroup group-algorithms
-        constexpr with_braced_init_args<binary_search_fn> binary_search{};
+        namespace
+        {
+            constexpr auto&& binary_search = static_const<with_braced_init_args<binary_search_fn>>::value;
+        }
 
         /// @}
     } // namespace v3

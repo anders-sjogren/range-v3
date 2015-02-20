@@ -19,10 +19,10 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_concepts.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -33,14 +33,9 @@ namespace ranges
         struct copy_if_fn
         {
             template<typename I, typename S, typename O, typename F, typename P = ident,
-                typename V = iterator_common_reference_t<I>,
-                typename X = concepts::Invokable::result_t<P, V>,
-                CONCEPT_REQUIRES_(
-                    InputIterator<I>() && IteratorRange<I, S>() &&
-                    WeaklyIncrementable<O>() &&
-                    InvokablePredicate<F, X>() &&
-                    IndirectlyCopyable<I, O, P>()
-                )>
+                CONCEPT_REQUIRES_(InputIterator<I>() && IteratorRange<I, S>() &&
+                    WeaklyIncrementable<O>() && IndirectInvokablePredicate<F, Project<I, P> >() &&
+                    IndirectlyCopyable<I, O>())>
             std::pair<I, O>
             operator()(I begin, S end, O out, F pred_, P proj_ = P{}) const
             {
@@ -48,9 +43,10 @@ namespace ranges
                 auto &&proj = invokable(proj_);
                 for(; begin != end; ++begin)
                 {
-                    if(pred(proj(*begin)))
+                    auto &&x = *begin;
+                    if(pred(proj(x)))
                     {
-                        *out = proj(*begin);
+                        *out = (decltype(x) &&) x;
                         ++out;
                     }
                 }
@@ -59,14 +55,8 @@ namespace ranges
 
             template<typename Rng, typename O, typename F, typename P = ident,
                 typename I = range_iterator_t<Rng>,
-                typename V = iterator_common_reference_t<I>,
-                typename X = concepts::Invokable::result_t<P, V>,
-                CONCEPT_REQUIRES_(
-                    InputIterable<Rng &>() &&
-                    WeaklyIncrementable<O>() &&
-                    InvokablePredicate<F, X>() &&
-                    IndirectlyCopyable<I, O, P>()
-                )>
+                CONCEPT_REQUIRES_(InputIterable<Rng &>() && WeaklyIncrementable<O>() &&
+                    IndirectInvokablePredicate<F, Project<I, P> >() && IndirectlyCopyable<I, O>())>
             std::pair<I, O>
             operator()(Rng &rng, O out, F pred, P proj = P{}) const
             {
@@ -76,7 +66,10 @@ namespace ranges
 
         /// \sa `copy_if_fn`
         /// \ingroup group-algorithms
-        constexpr copy_if_fn copy_if{};
+        namespace
+        {
+            constexpr auto&& copy_if = static_const<copy_if_fn>::value;
+        }
 
         /// @}
     } // namespace v3

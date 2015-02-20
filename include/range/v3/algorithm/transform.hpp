@@ -19,10 +19,12 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/unreachable.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -36,8 +38,7 @@ namespace ranges
         using Transformable1 = meta::fast_and<
             InputIterator<I>,
             WeaklyIncrementable<O>,
-            Invokable<P, V>,
-            Invokable<F, X>,
+            IndirectInvokable<F, Project<I, P>>,
             Writable<O, Y>>;
 
         /// \ingroup group-concepts
@@ -52,9 +53,7 @@ namespace ranges
             InputIterator<I0>,
             WeakInputIterator<I1>,
             WeaklyIncrementable<O>,
-            Invokable<P0, V0>,
-            Invokable<P1, V1>,
-            Invokable<F, X0, X1>,
+            IndirectInvokable<F, Project<I0, P0>, Project<I1, P1>>,
             Writable<O, Y>>;
 
         /// \addtogroup group-algorithms
@@ -133,7 +132,10 @@ namespace ranges
 
         /// \sa `transform_fn`
         /// \ingroup group-algorithms
-        constexpr transform_fn transform{};
+        namespace
+        {
+            constexpr auto&& transform = static_const<transform_fn>::value;
+        }
 
         /// @}
     } // namespace v3

@@ -17,22 +17,21 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename T0, typename T1, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename T0, typename T1, typename P = ident>
         using Replaceable = meta::fast_and<
             InputIterator<I>,
-            EqualityComparable<X, T0>,
+            IndirectInvokableRelation<equal_to, Project<I, P>, T0 const *>,
             Writable<I, T1>>;
 
         /// \addtogroup group-algorithms
@@ -61,7 +60,10 @@ namespace ranges
 
         /// \sa `replace_fn`
         /// \ingroup group-algorithms
-        constexpr replace_fn replace{};
+        namespace
+        {
+            constexpr auto&& replace = static_const<replace_fn>::value;
+        }
 
         /// @}
     } // namespace v3

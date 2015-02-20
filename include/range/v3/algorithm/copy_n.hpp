@@ -21,10 +21,10 @@
 #include <range/v3/distance.hpp>
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_concepts.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -38,24 +38,26 @@ namespace ranges
                 CONCEPT_REQUIRES_(
                     WeakInputIterator<I>() &&
                     WeaklyIncrementable<O>() &&
-                    IndirectlyCopyable<I, O, P>()
+                    IndirectlyCopyable<I, O>()
                 )>
             std::pair<I, O>
-            operator()(I begin, iterator_difference_t<I> n, O out, P proj_ = P{}) const
+            operator()(I begin, iterator_difference_t<I> n, O out) const
             {
                 RANGES_ASSERT(0 <= n);
-                auto &&proj = invokable(proj_);
                 auto norig = n;
                 auto b = uncounted(begin);
                 for(; n != 0; ++b, ++out, --n)
-                    *out = proj(*b);
+                    *out = *b;
                 return {recounted(begin, b, norig), out};
             }
         };
 
         /// \sa `copy_n_fn`
         /// \ingroup group-algorithms
-        constexpr copy_n_fn copy_n{};
+        namespace
+        {
+            constexpr auto&& copy_n = static_const<copy_n_fn>::value;
+        }
 
         /// @}
     } // namespace v3

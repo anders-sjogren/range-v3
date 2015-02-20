@@ -17,24 +17,23 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename O, typename T, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename O, typename T, typename P = ident>
         using RemoveCopyable = meta::fast_and<
             InputIterator<I>,
             WeaklyIncrementable<O>,
-            EqualityComparable<X, T>,
-            IndirectlyCopyable<I, O, P>>;
+            IndirectInvokableRelation<equal_to, Project<I, P>, T const *>,
+            IndirectlyCopyable<I, O>>;
 
         /// \addtogroup group-algorithms
         /// @{
@@ -48,10 +47,9 @@ namespace ranges
                 for(; begin != end; ++begin)
                 {
                     auto &&x = *begin;
-                    auto &&v = proj((decltype(x) &&) x);
-                    if(!(v == val))
+                    if(!(proj(x) == val))
                     {
-                        *out = (decltype(v) &&) v;
+                        *out = (decltype(x) &&) x;
                         ++out;
                     }
                 }
@@ -69,7 +67,10 @@ namespace ranges
 
         /// \sa `remove_copy_fn`
         /// \ingroup group-algorithms
-        constexpr remove_copy_fn remove_copy{};
+        namespace
+        {
+            constexpr auto&& remove_copy = static_const<remove_copy_fn>::value;
+        }
 
         /// @}
     } // namespace v3

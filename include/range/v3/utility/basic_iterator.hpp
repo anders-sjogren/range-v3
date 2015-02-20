@@ -20,6 +20,7 @@
 #include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/concepts.hpp>
 #include <range/v3/utility/nullptr_v.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 
@@ -227,9 +228,7 @@ namespace ranges
                     return *this;
                 }
                 // So that iter_move(r++) moves the cached value out
-                friend value_type && indirect_move(
-                    writable_postfix_increment_proxy const &,
-                    writable_postfix_increment_proxy const &ref)
+                friend value_type && indirect_move(writable_postfix_increment_proxy const &ref)
                 {
                     return std::move(ref.value_);
                 }
@@ -268,8 +267,8 @@ namespace ranges
             template<typename Ref, typename Val>
             using is_non_proxy_reference =
                 std::is_convertible<
-                    meta::eval<std::remove_reference<Ref>> const volatile*
-                  , Val const volatile*>;
+                    meta::eval<std::remove_reference<Ref>> const volatile *,
+                    Val const volatile *>;
 
             // A metafunction to choose the result type of postfix ++
             //
@@ -347,7 +346,7 @@ namespace ranges
             {};
 
             template<typename Cur>
-            struct has_mixin<Cur, void_t<typename Cur::mixin>>
+            struct has_mixin<Cur, meta::void_<typename Cur::mixin>>
               : std::true_type
             {};
 
@@ -438,6 +437,7 @@ namespace ranges
         {
         private:
             friend range_access;
+            friend detail::mixin_base<Cur>;
             CONCEPT_ASSERT(detail::InputCursor<Cur>());
             using single_pass = range_access::single_pass_t<Cur>;
             using cursor_concept_t =
@@ -485,10 +485,10 @@ namespace ranges
             using reference =
                 decltype(range_access::current(std::declval<Cur const &>()));
             using value_type = range_access::cursor_value_t<Cur>;
-            using common_reference = range_access::cursor_common_reference_t<Cur>;
             using iterator_category = decltype(detail::iter_cat(_nullptr_v<cursor_concept_t>()));
             using difference_type = range_access::cursor_difference_t<Cur>;
             using pointer = meta::eval<detail::operator_arrow_dispatch<reference>>;
+            using common_reference = common_reference_t<reference &&, value_type &>;
         private:
             using postfix_increment_result_t =
                 detail::postfix_increment_result<
@@ -560,7 +560,7 @@ namespace ranges
             CONCEPT_REQUIRES(detail::BidirectionalCursor<Cur>())
             basic_iterator operator--(int)
             {
-                auto tmp{*this};
+                basic_iterator tmp{*this};
                 --*this;
                 return tmp;
             }
@@ -676,7 +676,51 @@ namespace ranges
                 return operator_brackets_dispatch_t::apply(*this + n);
             }
         };
+
+        /// Get a cursor from a basic_iterator
+        struct get_cursor_fn
+        {
+            template<typename Cur, typename Sent>
+            Cur &operator()(basic_iterator<Cur, Sent> &it) const noexcept
+            {
+                detail::mixin_base<Cur> &mix = it;
+                return mix.get();
+            }
+            template<typename Cur, typename Sent>
+            Cur const &operator()(basic_iterator<Cur, Sent> const &it) const noexcept
+            {
+                detail::mixin_base<Cur> const &mix = it;
+                return mix.get();
+            }
+            template<typename Cur, typename Sent>
+            Cur operator()(basic_iterator<Cur, Sent> &&it) const
+                noexcept(std::is_nothrow_copy_constructible<Cur>::value)
+            {
+                detail::mixin_base<Cur> &mix = it;
+                return mix.get();
+            }
+        };
+
+        /// \sa `get_cursor_fn`
+        /// \ingroup group-utility
+        namespace
+        {
+            constexpr auto &&get_cursor = static_const<get_cursor_fn>::value;
+        }
         /// @}
+
+        /// \cond
+        // This is so that writable postfix proxy objects satisfy Readability
+        template<typename T, typename I, typename Qual1, typename Qual2>
+        struct common_reference_base<T, detail::writable_postfix_increment_proxy<I>, Qual1, Qual2>
+          : common_reference_base<T, iterator_value_t<I>, Qual1, qual::lvalue_ref_t>
+        {};
+
+        template<typename I, typename T, typename Qual1, typename Qual2>
+        struct common_reference_base<detail::writable_postfix_increment_proxy<I>, T, Qual1, Qual2>
+          : common_reference_base<iterator_value_t<I>, T, qual::lvalue_ref_t, Qual2>
+        {};
+        /// \endcond
     }
 }
 
@@ -691,10 +735,12 @@ namespace std
     public:
         using difference_type = typename iterator::difference_type;
         using value_type = typename iterator::value_type;
+        using reference = typename iterator::reference;
         using iterator_category =
             ::ranges::meta::eval<
-                ::ranges::detail::as_std_iterator_category<typename iterator::iterator_category>>;
-        using reference = typename iterator::reference;
+                ::ranges::detail::as_std_iterator_category<
+                    typename iterator::iterator_category,
+                    reference>>;
         using pointer = typename iterator::pointer;
     };
 }

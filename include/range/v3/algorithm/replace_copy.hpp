@@ -17,25 +17,23 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename O, typename T0, typename T1, typename P = ident,
-            typename V = iterator_common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename O, typename T0, typename T1, typename P = ident>
         using ReplaceCopyable = meta::fast_and<
             InputIterator<I>,
             WeakOutputIterator<O, T1>,
             IndirectlyCopyable<I, O>,
-            Invokable<P, V>,
-            EqualityComparable<X, T0>>;
+            IndirectInvokableRelation<equal_to, Project<I, P>, T0 const *>>;
 
         /// \addtogroup group-algorithms
         /// @{
@@ -47,10 +45,13 @@ namespace ranges
             {
                 auto &&proj = invokable(proj_);
                 for(; begin != end; ++begin, ++out)
-                    if(proj(*begin) == old_value)
+                {
+                    auto &&x = *begin;
+                    if(proj(x) == old_value)
                         *out = new_value;
                     else
-                        *out = *begin;
+                        *out = (decltype(x) &&) x;
+                }
                 return {begin, out};
             }
 
@@ -65,7 +66,10 @@ namespace ranges
 
         /// \sa `replace_copy_fn`
         /// \ingroup group-algorithms
-        constexpr replace_copy_fn replace_copy{};
+        namespace
+        {
+            constexpr auto&& replace_copy = static_const<replace_copy_fn>::value;
+        }
 
         /// @}
     } // namespace v3

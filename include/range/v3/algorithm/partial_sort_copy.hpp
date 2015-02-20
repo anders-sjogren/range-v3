@@ -17,28 +17,26 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_traits.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/algorithm/heap_algorithm.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
     inline namespace v3
     {
         /// \ingroup group-concepts
-        template<typename I, typename O, typename C = ordered_less, typename PI = ident, typename PO = ident,
-            typename VI = iterator_common_reference_t<I>,
-            typename VO = iterator_common_reference_t<O>,
-            typename XI = concepts::Invokable::result_t<PI, VI>,
-            typename XO = concepts::Invokable::result_t<PO, VO>>
+        template<typename I, typename O, typename C = ordered_less, typename PI = ident,
+            typename PO = ident>
         using PartialSortCopyConcept = meta::fast_and<
             InputIterator<I>,
             RandomAccessIterator<O>,
             IndirectlyCopyable<I, O>,
-            InvokableRelation<C, XI, XO>,
+            IndirectInvokableRelation<C, Project<I, PI>, Project<O, PO>>,
             Sortable<O, C, PO>>;
 
         /// \addtogroup group-algorithms
@@ -64,9 +62,10 @@ namespace ranges
                     auto len = r - out_begin;
                     for(; begin != end; ++begin)
                     {
-                        if(pred(in_proj(*begin), out_proj(*out_begin)))
+                        auto &&x = *begin;
+                        if(pred(in_proj(x), out_proj(*out_begin)))
                         {
-                            *out_begin = *begin;
+                            *out_begin = (decltype(x) &&) x;
                             detail::sift_down_n(out_begin, len, out_begin, std::ref(pred), std::ref(out_proj));
                         }
                     }
@@ -91,7 +90,10 @@ namespace ranges
 
         /// \sa `partial_sort_copy_fn`
         /// \ingroup group-algorithms
-        constexpr with_braced_init_args<partial_sort_copy_fn> partial_sort_copy {};
+        namespace
+        {
+            constexpr auto&& partial_sort_copy = static_const<with_braced_init_args<partial_sort_copy_fn>>::value;
+        }
 
         /// @}
     } // namespace v3

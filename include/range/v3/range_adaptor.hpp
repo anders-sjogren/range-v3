@@ -33,11 +33,11 @@ namespace ranges
         {
             template<typename Derived>
             using begin_adaptor_t =
-                decltype(range_access::begin_adaptor(std::declval<Derived &>()));
+                decltype(range_access::begin_adaptor(std::declval<Derived &>(), 42));
 
             template<typename Derived>
             using end_adaptor_t =
-                decltype(range_access::end_adaptor(std::declval<Derived &>()));
+                decltype(range_access::end_adaptor(std::declval<Derived &>(), 42));
 
             template<typename Derived>
             using adapted_iterator_t =
@@ -46,6 +46,33 @@ namespace ranges
             template<typename Derived>
             using adapted_sentinel_t =
                 decltype(std::declval<end_adaptor_t<Derived>>().end(std::declval<Derived &>()));
+
+            struct adaptor_base_current_mem_fn
+            {};
+
+            template<typename BaseIter, typename Adapt, typename Enable = void>
+            struct adaptor_value_type2
+            {};
+
+            template<typename BaseIter, typename Adapt>
+            struct adaptor_value_type2<
+                BaseIter,
+                Adapt,
+                meta::void_<decltype(Adapt::current(BaseIter{}, adaptor_base_current_mem_fn{}))>>
+            {
+                using value_type = iterator_value_t<BaseIter>;
+            };
+
+            template<typename BaseIter, typename Adapt, typename Enable = void>
+            struct adaptor_value_type
+              : adaptor_value_type2<BaseIter, Adapt>
+            {};
+
+            template<typename BaseIter, typename Adapt>
+            struct adaptor_value_type<BaseIter, Adapt, meta::void_<typename Adapt::value_type>>
+            {
+                using value_type = typename Adapt::value_type;
+            };
         }
         /// \endcond
 
@@ -65,6 +92,14 @@ namespace ranges
 
         struct adaptor_base
         {
+            adaptor_base() = default;
+            adaptor_base(adaptor_base &&) = default;
+            adaptor_base(adaptor_base const &) = default;
+            adaptor_base &operator=(adaptor_base &&) = default;
+            adaptor_base &operator=(adaptor_base const &) = default;
+
+            adaptor_base(detail::any, detail::any = {}, detail::any = {})
+            {}
             template<typename Rng>
             range_iterator_t<base_range_t<Rng>> begin(Rng &rng) const
             {
@@ -81,7 +116,8 @@ namespace ranges
                 return it0 == it1;
             }
             template<typename I, CONCEPT_REQUIRES_(WeakIterator<I>())>
-            static iterator_reference_t<I> current(I const &it)
+            static iterator_reference_t<I> current(I const &it, detail::adaptor_base_current_mem_fn = {})
+                noexcept(noexcept(iterator_reference_t<I>(*it)))
             {
                 return *it;
             }
@@ -117,11 +153,22 @@ namespace ranges
         template<typename BaseIter, typename Adapt>
         struct adaptor_cursor
           : private compressed_pair<BaseIter, Adapt>
+          , detail::adaptor_value_type<BaseIter, Adapt>
         {
             using single_pass = meta::or_<
                 range_access::single_pass_t<Adapt>,
                 SinglePass<BaseIter>>;
             using compressed_pair<BaseIter, Adapt>::compressed_pair;
+            struct mixin : basic_mixin<adaptor_cursor>
+            {
+                using basic_mixin<adaptor_cursor>::basic_mixin;
+                // All iterators into adapted ranges have a base() member for fetching
+                // the underlying iterator.
+                BaseIter base() const
+                {
+                    return this->get().first;
+                }
+            };
         private:
             template<typename BaseSent, typename SentAdapt>
             friend struct adaptor_sentinel;
@@ -151,29 +198,72 @@ namespace ranges
             {
                 return second.distance_to(first, that.first);
             }
-        public:
-            struct mixin
-              : basic_mixin<adaptor_cursor>
+            // If the adaptor has an indirect_move function, use it.
+            template<typename A = Adapt,
+                typename X = decltype(std::declval<A>().indirect_move(first))>
+            X indirect_move_(int) const
+                noexcept(noexcept(std::declval<A>().indirect_move(first)))
             {
-                using basic_mixin<adaptor_cursor>::basic_mixin;
-                // All iterators into adapted ranges have a base() member for fetching
-                // the underlying iterator.
-                BaseIter base() const
-                {
-                    return this->get().first;
-                }
-                // TODO:
-                //friend auto indirect_move(mixin const &m, iterator_reference_t<BaseIter> && ref)
-                //    noexcept(noexcept(ranges::indirect_move(m.get(), (iterator_reference_t<BaseIter> &&) ref))) ->
-                //    decltype(ranges::indirect_move(m.get(), (iterator_reference_t<BaseIter> &&) ref))
-                //{
-                //    return ranges::indirect_move(m.get(), (iterator_reference_t<BaseIter> &&) ref);
-                //}
-            };
+                using V = range_access::cursor_value_t<adaptor_cursor>;
+                using R = decltype(std::declval<A>().current(first));
+                static_assert(
+                    CommonReference<X &&, V const &>(),
+                    "In your adaptor, the result of your indirect_move member function does "
+                    "not share a common reference with your value type.");
+                static_assert(
+                    CommonReference<R &&, X &&>(),
+                    "In your adaptor, the result of your indirect_move member function does "
+                    "not share a common reference with the result of your current member "
+                    "function.");
+                return second.indirect_move(first);
+            }
+            // If there is no indirect_move member and the adaptor has not overridden the current
+            // member function, then dispatch to the base iterator's indirect_move function.
+            template<typename A = Adapt,
+                typename R = decltype(std::declval<A>().current(first, detail::adaptor_base_current_mem_fn{})),
+                typename X = iterator_rvalue_reference_t<BaseIter>>
+            X indirect_move_(long) const
+                noexcept(noexcept(X(ranges::indirect_move(first))))
+            {
+                return ranges::indirect_move(first);
+            }
+            // If the adaptor does not have an indirect_move function but overrides the current
+            // member function, apply std::move to the result of calling current.
+            template<typename A = Adapt,
+                typename R = decltype(std::declval<A>().current(first)),
+                typename X =
+                    meta::if_<std::is_reference<R>, meta::eval<std::remove_reference<R>> &&, R>>
+            X indirect_move_(detail::any) const
+                noexcept(noexcept(X(static_cast<X &&>(std::declval<R>()))))
+            {
+                using V = range_access::cursor_value_t<adaptor_cursor>;
+                static_assert(
+                    CommonReference<X &&, V const &>(),
+                    "In your adaptor, you've specified a value type that does not "
+                    "share a common reference type with the result of moving the value "
+                    "returned by current. Consider defining an indirect_move function "
+                    "in your adaptor.");
+                return static_cast<X &&>(second.current(first));
+            }
+            // Gives users a way to override the default indirect_move function in their adaptors.
+            template<typename Sent, typename M = mixin>
+            friend auto indirect_move(basic_iterator<adaptor_cursor, Sent> const &it)
+                noexcept(noexcept(std::declval<M const &>().get().indirect_move_(42))) ->
+                decltype(std::declval<M const &>().get().indirect_move_(42))
+            {
+                return get_cursor(it).indirect_move_(42);
+            }
+        public:
             template<typename A = Adapt,
                 typename R = decltype(std::declval<A>().current(first))>
             R current() const
+                noexcept(noexcept(R(std::declval<A>().current(first))))
             {
+                using V = range_access::cursor_value_t<adaptor_cursor>;
+                static_assert(
+                    CommonReference<R &&, V &>(),
+                    "In your adaptor, you've specified a value type that does not "
+                    "share a common reference type with the return type of current.");
                 return second.current(first);
             }
             template<typename A = Adapt,
@@ -296,14 +386,14 @@ namespace ranges
             template<typename D = Derived, CONCEPT_REQUIRES_(Same<D, Derived>())>
             adaptor_cursor_t<D> begin_cursor()
             {
-                auto adapt = range_access::begin_adaptor(derived());
+                auto adapt = range_access::begin_adaptor(derived(), 42);
                 auto pos = adapt.begin(derived());
                 return {std::move(pos), std::move(adapt)};
             }
             template<typename D = Derived, CONCEPT_REQUIRES_(Same<D, Derived>())>
             adaptor_sentinel_t<D> end_cursor()
             {
-                auto adapt = range_access::end_adaptor(derived());
+                auto adapt = range_access::end_adaptor(derived(), 42);
                 auto pos = adapt.end(derived());
                 return {std::move(pos), std::move(adapt)};
             }
@@ -314,7 +404,7 @@ namespace ranges
                 CONCEPT_REQUIRES_(Same<D, Derived>() && Range<base_range_t const>())>
             adaptor_cursor_t<D const> begin_cursor() const
             {
-                auto adapt = range_access::begin_adaptor(derived());
+                auto adapt = range_access::begin_adaptor(derived(), 42);
                 auto pos = adapt.begin(derived());
                 return {std::move(pos), std::move(adapt)};
             }
@@ -322,7 +412,7 @@ namespace ranges
                 CONCEPT_REQUIRES_(Same<D, Derived>() && Range<base_range_t const>())>
             adaptor_sentinel_t<D const> end_cursor() const
             {
-                auto adapt = range_access::end_adaptor(derived());
+                auto adapt = range_access::end_adaptor(derived(), 42);
                 auto pos = adapt.end(derived());
                 return {std::move(pos), std::move(adapt)};
             }

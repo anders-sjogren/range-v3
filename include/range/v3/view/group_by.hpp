@@ -22,7 +22,10 @@
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_facade.hpp>
-#include <range/v3/utility/invokable.hpp>
+#include <range/v3/utility/meta.hpp>
+#include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/semiregular.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/algorithm/adjacent_find.hpp>
 #include <range/v3/view/view.hpp>
 #include <range/v3/view/take_while.hpp>
@@ -39,8 +42,8 @@ namespace ranges
         {
         private:
             friend range_access;
-            view::all_t<Rng> rng_;
-            semiregular_invokable_t<Fun> fun_;
+            Rng rng_;
+            semiregular_t<invokable_t<Fun>> fun_;
 
             template<bool IsConst>
             struct cursor
@@ -49,12 +52,12 @@ namespace ranges
                 friend range_access; friend group_by_view;
                 range_iterator_t<Rng> cur_;
                 range_sentinel_t<Rng> last_;
-                semiregular_invokable_ref_t<Fun, IsConst> fun_;
+                semiregular_ref_or_val_t<invokable_t<Fun>, IsConst> fun_;
 
                 struct take_while_pred
                 {
                     range_iterator_t<Rng> first_;
-                    semiregular_invokable_ref_t<Fun, IsConst> fun_;
+                    semiregular_ref_or_val_t<invokable_t<Fun>, IsConst> fun_;
                     bool operator()(range_reference_t<Rng> ref) const
                     {
                         return fun_(*first_, ref);
@@ -67,7 +70,7 @@ namespace ranges
                 }
                 void next()
                 {
-                    cur_ = next_bounded(adjacent_find(cur_, last_, not_(std::ref(fun_))), 1, last_);
+                    cur_ = ranges::next(adjacent_find(cur_, last_, not_(std::ref(fun_))), 1, last_);
                 }
                 bool done() const
                 {
@@ -77,15 +80,13 @@ namespace ranges
                 {
                     return cur_ == that.cur_;
                 }
-                cursor(semiregular_invokable_ref_t<Fun, IsConst> fun, range_iterator_t<Rng> first,
+                cursor(semiregular_ref_or_val_t<invokable_t<Fun>, IsConst> fun, range_iterator_t<Rng> first,
                     range_sentinel_t<Rng> last)
                   : cur_(first), last_(last), fun_(fun)
                 {}
             public:
                 cursor() = default;
             };
-            CONCEPT_REQUIRES(!Invokable<Fun const, range_common_reference_t<Rng>,
-                range_common_reference_t<Rng>>())
             cursor<false> begin_cursor()
             {
                 return {fun_, ranges::begin(rng_), ranges::end(rng_)};
@@ -98,8 +99,8 @@ namespace ranges
             }
         public:
             group_by_view() = default;
-            group_by_view(Rng && rng, Fun fun)
-              : rng_(view::all(std::forward<Rng>(rng)))
+            group_by_view(Rng rng, Fun fun)
+              : rng_(std::move(rng))
               , fun_(std::move(fun))
             {}
         };
@@ -120,14 +121,14 @@ namespace ranges
                 template<typename Rng, typename Fun>
                 using Concept = meta::and_<
                     ForwardIterable<Rng>,
-                    InvokablePredicate<Fun, range_common_reference_t<Rng>,
-                        range_common_reference_t<Rng>>>;
+                    IndirectInvokablePredicate<Fun, range_iterator_t<Rng>,
+                        range_iterator_t<Rng>>>;
 
                 template<typename Rng, typename Fun,
                     CONCEPT_REQUIRES_(Concept<Rng, Fun>())>
-                group_by_view<Rng, Fun> operator()(Rng && rng, Fun fun) const
+                group_by_view<all_t<Rng>, Fun> operator()(Rng && rng, Fun fun) const
                 {
-                    return {std::forward<Rng>(rng), std::move(fun)};
+                    return {all(std::forward<Rng>(rng)), std::move(fun)};
                 }
 
             #ifndef RANGES_DOXYGEN_INVOKED
@@ -138,8 +139,8 @@ namespace ranges
                     CONCEPT_ASSERT_MSG(ForwardIterable<Rng>(),
                         "The object on which view::group_by operates must be a model of the "
                         "ForwardIterable concept.");
-                    CONCEPT_ASSERT_MSG(InvokablePredicate<Fun, range_common_reference_t<Rng>,
-                        range_common_reference_t<Rng>>(),
+                    CONCEPT_ASSERT_MSG(IndirectInvokablePredicate<Fun, range_iterator_t<Rng>,
+                        range_iterator_t<Rng>>(),
                         "The function passed to view::group_by must be callable with two arguments "
                         "of the range's common reference type, and its return type must be "
                         "convertible to bool.");
@@ -149,7 +150,10 @@ namespace ranges
 
             /// \relates group_by_fn
             /// \ingroup group-views
-            constexpr view<group_by_fn> group_by{};
+            namespace
+            {
+                constexpr auto&& group_by = static_const<view<group_by_fn>>::value;
+            }
         }
         /// @}
     }

@@ -123,8 +123,9 @@ namespace ranges
                 using single_pass = std::true_type;
                 any_input_cursor() = default;
                 template<typename Rng,
-                         CONCEPT_REQUIRES_(InputIterable<Rng>() &&
-                                           Same<Ref, range_reference_t<Rng>>())>
+                    CONCEPT_REQUIRES_(!Same<detail::decay_t<Rng>, any_input_cursor>()),
+                    CONCEPT_REQUIRES_(InputIterable<Rng>() &&
+                                      Same<Ref, range_reference_t<Rng>>())>
                 any_input_cursor(Rng &&rng, begin_tag)
                   : ptr_{new any_input_cursor_impl<range_iterator_t<Rng>>{begin(rng)}}
                 {}
@@ -163,8 +164,9 @@ namespace ranges
             public:
                 any_input_sentinel() = default;
                 template<typename Rng,
-                         CONCEPT_REQUIRES_(InputIterable<Rng>() &&
-                                           Same<Ref, range_reference_t<Rng>>())>
+                    CONCEPT_REQUIRES_(!Same<detail::decay_t<Rng>, any_input_sentinel>()),
+                    CONCEPT_REQUIRES_(InputIterable<Rng>() &&
+                                      Same<Ref, range_reference_t<Rng>>())>
                 any_input_sentinel(Rng &&rng, end_tag)
                   : ptr_{new any_input_sentinel_impl<range_sentinel_t<Rng>, range_iterator_t<Rng>>{end(rng)}}
                 {}
@@ -205,11 +207,11 @@ namespace ranges
               : any_input_range_interface<range_reference_t<Rng>>
             {
             private:
-                view::all_t<Rng> rng_;
+                Rng rng_;
             public:
                 any_input_range_impl() = default;
-                any_input_range_impl(Rng && rng)
-                  : rng_{view::all(std::forward<Rng>(rng))}
+                any_input_range_impl(Rng rng)
+                  : rng_(std::move(rng))
                 {}
                 any_input_cursor<range_reference_t<Rng>> begin_cursor() const override
                 {
@@ -221,7 +223,7 @@ namespace ranges
                 }
                 any_input_range_interface<range_reference_t<Rng>> *clone() const override
                 {
-                    return new any_input_range_impl<view::all_t<Rng>>{static_cast<view::all_t<Rng>>(rng_)};
+                    return new any_input_range_impl<Rng>{rng_};
                 }
             };
         }
@@ -247,10 +249,11 @@ namespace ranges
         public:
             any_input_range() = default;
             template<typename Rng,
+                CONCEPT_REQUIRES_(!Same<detail::decay_t<Rng>, any_input_range>()),
                 CONCEPT_REQUIRES_(InputIterable<Rng>() &&
                                   Same<Ref, range_reference_t<Rng>>())>
             any_input_range(Rng && rng)
-              : ptr_{new detail::any_input_range_impl<Rng>{std::forward<Rng>(rng)}}
+              : ptr_{new detail::any_input_range_impl<view::all_t<Rng>>{view::all(std::forward<Rng>(rng))}}
             {
                 static_assert(Inf == is_infinite<Rng>::value,
                     "Rng finiteness does not match the Inf template parameter");

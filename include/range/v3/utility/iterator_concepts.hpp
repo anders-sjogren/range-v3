@@ -20,7 +20,6 @@
 #include <range/v3/utility/move.hpp>
 #include <range/v3/utility/swap.hpp>
 #include <range/v3/utility/concepts.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
 
 namespace ranges
@@ -34,22 +33,18 @@ namespace ranges
 
         struct input_iterator_tag
           : weak_input_iterator_tag
-          , virtual std::input_iterator_tag
         {};
 
         struct forward_iterator_tag
           : input_iterator_tag
-          , virtual std::forward_iterator_tag
         {};
 
         struct bidirectional_iterator_tag
           : forward_iterator_tag
-          , virtual std::bidirectional_iterator_tag
         {};
 
         struct random_access_iterator_tag
           : bidirectional_iterator_tag
-          , virtual std::random_access_iterator_tag
         {};
         /// @}
 
@@ -88,37 +83,46 @@ namespace ranges
             };
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            template<typename T>
+            template<typename Tag, typename Reference>
             struct as_std_iterator_category;
 
-            template<>
-            struct as_std_iterator_category<ranges::weak_input_iterator_tag>
+            template<typename Reference>
+            struct as_std_iterator_category<ranges::weak_input_iterator_tag, Reference>
+            {
+                // Not a valid C++14 iterator
+            };
+
+            template<typename Reference>
+            struct as_std_iterator_category<ranges::input_iterator_tag, Reference>
             {
                 using type = std::input_iterator_tag;
             };
 
-            template<>
-            struct as_std_iterator_category<ranges::input_iterator_tag>
+            template<typename Reference>
+            struct as_std_iterator_category<ranges::forward_iterator_tag, Reference>
             {
-                using type = std::input_iterator_tag;
+                using type = meta::if_<
+                    std::is_reference<Reference>,
+                    std::forward_iterator_tag,
+                    std::input_iterator_tag>;
             };
 
-            template<>
-            struct as_std_iterator_category<ranges::forward_iterator_tag>
+            template<typename Reference>
+            struct as_std_iterator_category<ranges::bidirectional_iterator_tag, Reference>
             {
-                using type = std::forward_iterator_tag;
+                using type = meta::if_<
+                    std::is_reference<Reference>,
+                    std::bidirectional_iterator_tag,
+                    std::input_iterator_tag>;
             };
 
-            template<>
-            struct as_std_iterator_category<ranges::bidirectional_iterator_tag>
+            template<typename Reference>
+            struct as_std_iterator_category<ranges::random_access_iterator_tag, Reference>
             {
-                using type = std::bidirectional_iterator_tag;
-            };
-
-            template<>
-            struct as_std_iterator_category<ranges::random_access_iterator_tag>
-            {
-                using type = std::random_access_iterator_tag;
+                using type = meta::if_<
+                    std::is_reference<Reference>,
+                    std::random_access_iterator_tag,
+                    std::input_iterator_tag>;
             };
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +154,7 @@ namespace ranges
             };
 
             template<typename T>
-            struct iterator_category_type<T, void_t<typename T::iterator_category>>
+            struct iterator_category_type<T, meta::void_<typename T::iterator_category>>
               : as_ranges_iterator_category<typename T::iterator_category>
             {};
         }
@@ -184,7 +188,8 @@ namespace ranges
                 using rvalue_reference_t = decltype(indirect_move(std::declval<I>()));
 
                 template<typename I>
-                using common_reference_t = meta::eval<iter_common_reference<I>>;
+                using common_reference_t =
+                    ranges::common_reference_t<reference_t<I> &&, value_t<I> &>;
 
                 template<typename I>
                 using pointer_t = meta::eval<pointer_type<I>>;
@@ -192,19 +197,15 @@ namespace ranges
                 template<typename I>
                 auto requires_(I i) -> decltype(
                     concepts::valid_expr(
-                        // In addition to value, reference, and rvalue reference,
-                        // an has a common reference type to which the reference and value types
-                        // are convertible. The concept checks should be expressed in terms of
-                        // the common reference type.
-                        concepts::model_of<Convertible, reference_t<I>, common_reference_t<I>>(),
-                        concepts::model_of<Convertible, value_t<I> &, common_reference_t<I>>(),
-                        // This ensures that there is a way to move from reference type
-                        // to the rvalue reference type via the 2-argument version of indirect_move:
-                        concepts::same_type(indirect_move(i), indirect_move(i, *i))
-                        // Axiom: indirect_move(i) and indirect_move(i, *i) are required to be
-                        // semantically equivalent. There is no requirement that indirect_move(i)
-                        // be implemented in terms of indirect_move(i, *i). indirect_move(i, *i)
-                        // should not read from i.
+                        // The value, reference and rvalue reference types are related
+                        // through the CommonReference concept.
+                        concepts::model_of<CommonReference, reference_t<I> &&, value_t<I> &>(),
+                        concepts::model_of<CommonReference, reference_t<I> &&, rvalue_reference_t<I> &&>(),
+                        concepts::model_of<CommonReference, rvalue_reference_t<I> &&, value_t<I> const &>(),
+                        // Experimental additional tests. If nothing else, this is a good workout
+                        // for the common_reference code.
+                        concepts::model_of<Same, ranges::common_reference_t<reference_t<I>, value_t<I>>, value_t<I>>(),
+                        concepts::model_of<Same, ranges::common_reference_t<rvalue_reference_t<I>, value_t<I>>, value_t<I>>()
                     ));
             };
 
@@ -230,36 +231,33 @@ namespace ranges
 
             struct IndirectlyMovable
             {
-                template<typename I, typename O, typename P = ident>
-                auto requires_(I i, O o, P = P{}) -> decltype(
+                template<typename I, typename O>
+                auto requires_(I i, O o) -> decltype(
                     concepts::valid_expr(
                         concepts::model_of<Readable, I>(),
+                        concepts::model_of<SemiRegular, O>(),
                         concepts::model_of<Convertible, Readable::rvalue_reference_t<I> &&,
                             Readable::value_t<I>>(),
-                        // Should be:
-                        // concepts::model_of<RegularInvokable, P,
-                        //      CommonReference::common_t<Readable::value_t<I> &&,
-                        //          Readable::rvalue_reference_t<I> > >(),
-                        concepts::model_of<RegularInvokable, P, Readable::value_t<I> &&>(),
-                        concepts::model_of<SemiRegular, O>(),
-                        concepts::model_of<MoveWritable, O,
-                            Invokable::result_t<P, Readable::value_t<I> &&>>()
+                        concepts::model_of<MoveWritable, O, Readable::rvalue_reference_t<I> &&>(),
+                        concepts::model_of<MoveWritable, O, Readable::value_t<I> &&>()
                     ));
             };
 
+            // BUGBUG shouldn't this also require that I's value type is Semiregular?
+            // See unique_copy for InputIterators.
             struct IndirectlyCopyable
               : refines<IndirectlyMovable>
             {
-                template<typename I, typename O, typename P = ident>
-                auto requires_(I i, O o, P = P{}) -> decltype(
+                template<typename I, typename O>
+                auto requires_(I i, O o) -> decltype(
                     concepts::valid_expr(
                         concepts::model_of<Readable, I>(),
-                        concepts::model_of<Convertible, Readable::reference_t<I>,
-                            Readable::value_t<I>>(),
-                        concepts::model_of<RegularInvokable, P, Readable::common_reference_t<I> &&>(),
                         concepts::model_of<SemiRegular, O>(),
-                        concepts::model_of<Writable, O,
-                            Invokable::result_t<P, Readable::common_reference_t<I> &&>>()
+                        concepts::model_of<Convertible, Readable::reference_t<I> &&,
+                            Readable::value_t<I>>(),
+                        concepts::model_of<Writable, O, Readable::reference_t<I> &&>(),
+                        concepts::model_of<Writable, O, Readable::common_reference_t<I> &&>(),
+                        concepts::model_of<Writable, O, Readable::value_t<I> const &>()
                     ));
             };
 
@@ -329,7 +327,7 @@ namespace ranges
               : refines<WeakIterator, Readable>
             {
                 // Associated types
-                // value_t from readable
+                // value_t from Readable
                 // distance_t from WeaklyIncrementable
                 template<typename I>
                 using category_t = meta::eval<ranges::iterator_category_type<I>>;
@@ -389,6 +387,8 @@ namespace ranges
                         concepts::has_type<I>(i - (i - i)),
                         concepts::has_type<I &>(i += (i-i)),
                         concepts::has_type<I &>(i -= (i - i)),
+                        // BUGBUG Should be CommonReference<V const &, decltype(i[i-i])>
+                        // Redesign basic_iterator's operator[]'s proxy reference type
                         concepts::convertible_to<V>(i[i - i])
                     ));
             };
@@ -403,11 +403,11 @@ namespace ranges
         template<typename Out, typename T>
         using Writable = concepts::models<concepts::Writable, Out, T>;
 
-        template<typename I, typename O, typename P = ident>
-        using IndirectlyMovable = concepts::models<concepts::IndirectlyMovable, I, O, P>;
+        template<typename I, typename O>
+        using IndirectlyMovable = concepts::models<concepts::IndirectlyMovable, I, O>;
 
-        template<typename I, typename O, typename P = ident>
-        using IndirectlyCopyable = concepts::models<concepts::IndirectlyCopyable, I, O, P>;
+        template<typename I, typename O>
+        using IndirectlyCopyable = concepts::models<concepts::IndirectlyCopyable, I, O>;
 
         template<typename I1, typename I2>
         using IndirectlySwappable = concepts::models<concepts::IndirectlySwappable, I1, I2>;
@@ -464,8 +464,118 @@ namespace ranges
         template<typename I>
         using SinglePass = meta::fast_and<WeakInputIterator<I>, meta::not_<ForwardIterator<I>>>;
 
+        namespace detail
+        {
+            template<typename I, typename Proj>
+            struct projected_readable
+            {
+                using value_type =
+                    decay_t<concepts::Invokable::result_t<Proj, concepts::Readable::value_t<I>>>;
+                using reference =
+                    concepts::Invokable::result_t<Proj, concepts::Readable::reference_t<I>>;
+                using pointer =
+                    meta::eval<std::add_pointer<reference>>;
+                reference operator*() const;
+                friend auto indirect_move(projected_readable const &) ->
+                    concepts::Invokable::result_t<Proj, concepts::Readable::rvalue_reference_t<I>>
+                {
+                    RANGES_ASSERT(false);
+                    throw;
+                }
+            };
+
+            template<typename I, typename Proj>
+            struct Projectable_
+            {
+                using type =
+                    meta::fast_and<
+                        Invokable<Proj, concepts::Readable::value_t<I>>,
+                        Invokable<Proj, concepts::Readable::reference_t<I>>,
+                        Invokable<Proj, concepts::Readable::rvalue_reference_t<I>>>;
+            };
+        }
+
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Composite concepts for use defining algorithms:
+        template<typename I, typename Proj>
+        using Projectable = meta::and_<
+            Readable<I>,
+            detail::Projectable_<I, Proj>>;
+
+        template<typename I, typename Proj>
+        using Project =
+            meta::eval<std::enable_if<
+                Projectable<I, Proj>::value,
+                detail::projected_readable<I, Proj>>>;
+
+        namespace detail
+        {
+            // Return the value and reference types of an iterator in a list.
+            template<typename I>
+            using readable_types =
+                meta::list<concepts::Readable::value_t<I>, concepts::Readable::reference_t<I>>;
+
+            template<typename CombineFn, typename ApplyFn, typename...Is>
+            using indirect_apply_combine =
+                // Collect the list of results computed below with CombineFn
+                meta::apply_list<
+                    CombineFn,
+                    // Call ApplyFn with the cartesian product of the Readables' value and reference
+                    // types. In addition, call ApplyFn with the common_reference type of all the
+                    // Readables. Return all the results as a list.
+                    meta::transform<
+                        meta::push_back<
+                            meta::cartesian_product<
+                                meta::transform<meta::list<Is...>, meta::quote<readable_types>>>,
+                            meta::list<concepts::Readable::common_reference_t<Is>...>>,
+                        meta::bind_front<meta::quote<meta::apply_list>, ApplyFn>>>;
+        }
+
+        template<typename C, typename ...Is>
+        using IndirectFunction = meta::and_<
+            meta::fast_and<Readable<Is>...>,
+            // C must be callable with the values and references read from the Is.
+            meta::lazy_apply<
+                meta::quote<detail::indirect_apply_combine>,
+                meta::quote<meta::fast_and>,
+                meta::bind_front<meta::quote<Function>, C>,
+                Is...>,
+            // In addition, the return types of the C invocations tried above must all
+            // share a common reference type. (The lazy_apply is so that this doesn't get
+            // evaluated unless C is truly callable as determined above.)
+            meta::lazy_apply<
+                meta::quote<detail::indirect_apply_combine>,
+                meta::quote<CommonReference>,
+                meta::bind_front<meta::quote<concepts::Function::result_t>, C>,
+                Is...> >;
+
+        template<typename C, typename ...Is>
+        using IndirectPredicate = meta::and_<
+            meta::fast_and<Readable<Is>...>,
+            meta::lazy_apply<
+                meta::quote<detail::indirect_apply_combine>,
+                meta::quote<meta::fast_and>,
+                meta::bind_front<meta::quote<Predicate>, C>,
+                Is...>>;
+
+        template<typename C, typename I0, typename I1 = I0>
+        using IndirectRelation = meta::and_<
+            meta::fast_and<Readable<I0>, Readable<I1>>,
+            meta::lazy_apply<
+                meta::quote<detail::indirect_apply_combine>,
+                meta::quote<meta::fast_and>,
+                meta::bind_front<meta::quote<Relation>, C>,
+                I0, I1>>;
+
+        template<typename C, typename ...Is>
+        using IndirectInvokable = IndirectFunction<invokable_t<C>, Is...>;
+
+        template<typename C, typename ...Is>
+        using IndirectInvokablePredicate = IndirectPredicate<invokable_t<C>, Is...>;
+
+        template<typename C, typename I0, typename I1 = I0>
+        using IndirectInvokableRelation = IndirectRelation<invokable_t<C>, I0, I1>;
+
         template<typename I, typename V = concepts::Readable::value_t<I>>
         using Permutable = meta::fast_and<
             ForwardIterator<I>,
@@ -473,62 +583,43 @@ namespace ranges
             IndirectlyMovable<I, I>>;
 
         template<typename I0, typename I1, typename Out, typename C = ordered_less,
-            typename P0 = ident, typename P1 = ident,
-            typename V0 = concepts::Readable::common_reference_t<I0>,
-            typename V1 = concepts::Readable::common_reference_t<I1>,
-            typename X0 = concepts::Invokable::result_t<P0, V0>,
-            typename X1 = concepts::Invokable::result_t<P1, V1>>
+            typename P0 = ident, typename P1 = ident>
         using Mergeable = meta::fast_and<
             InputIterator<I0>,
             InputIterator<I1>,
             WeaklyIncrementable<Out>,
-            InvokableRelation<C, X1, X0>,
+            IndirectInvokableRelation<C, Project<I0, P0>, Project<I1, P1>>,
             IndirectlyCopyable<I0, Out>,
             IndirectlyCopyable<I1, Out>>;
 
         template<typename I0, typename I1, typename Out, typename C = ordered_less,
-            typename P0 = ident, typename P1 = ident,
-            typename V0 = concepts::Readable::common_reference_t<I0>,
-            typename V1 = concepts::Readable::common_reference_t<I1>,
-            typename X0 = concepts::Invokable::result_t<P0, V0>,
-            typename X1 = concepts::Invokable::result_t<P1, V1>>
+            typename P0 = ident, typename P1 = ident>
         using MergeMovable = meta::fast_and<
             InputIterator<I0>,
             InputIterator<I1>,
             WeaklyIncrementable<Out>,
-            InvokableRelation<C, X1, X0>,
+            IndirectInvokableRelation<C, Project<I0, P0>, Project<I1, P1>>,
             IndirectlyMovable<I0, Out>,
             IndirectlyMovable<I1, Out>>;
 
-        template<typename I, typename C = ordered_less, typename P = ident,
-            typename V = concepts::Readable::common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V>>
+        template<typename I, typename C = ordered_less, typename P = ident>
         using Sortable = meta::fast_and<
             ForwardIterator<I>,
-            Invokable<P, V>,
-            InvokableRelation<C, X, X>,
+            IndirectInvokableRelation<C, Project<I, P>, Project<I, P>>,
             Permutable<I>>;
 
-        template<typename I, typename V2, typename C = ordered_less, typename P = ident,
-            typename V = concepts::Readable::common_reference_t<I>,
-            typename X = concepts::Invokable::result_t<P, V> >
+        template<typename I, typename V2, typename C = ordered_less, typename P = ident>
         using BinarySearchable = meta::fast_and<
             ForwardIterator<I>,
-            Invokable<P, V>,
-            InvokableRelation<C, X, V2>>;
+            TotallyOrdered<V2>,
+            IndirectInvokableRelation<C, Project<I, P>, V2 const *>>;
 
         template<typename I1, typename I2, typename C = equal_to, typename P1 = ident,
-            typename P2 = ident,
-            typename V1 = concepts::Readable::common_reference_t<I1>,
-            typename V2 = concepts::Readable::common_reference_t<I2>,
-            typename X1 = concepts::Invokable::result_t<P1, V1>,
-            typename X2 = concepts::Invokable::result_t<P2, V2>>
+            typename P2 = ident>
         using WeaklyAsymmetricallyComparable = meta::fast_and<
             InputIterator<I1>,
             WeakInputIterator<I2>,
-            Invokable<P1, V1>,
-            Invokable<P2, V2>,
-            InvokablePredicate<C, X1, X2>>;
+            IndirectInvokablePredicate<C, Project<I1, P1>, Project<I2, P2>>>;
 
         template<typename I1, typename I2, typename C = equal_to, typename P1 = ident,
             typename P2 = ident>
@@ -537,14 +628,10 @@ namespace ranges
             InputIterator<I2>>;
 
         template<typename I1, typename I2, typename C = equal_to, typename P1 = ident,
-            typename P2 = ident,
-            typename V1 = concepts::Readable::common_reference_t<I1>,
-            typename V2 = concepts::Readable::common_reference_t<I2>,
-            typename X1 = concepts::Invokable::result_t<P1, V1>,
-            typename X2 = concepts::Invokable::result_t<P2, V2>>
+            typename P2 = ident>
         using WeaklyComparable = meta::fast_and<
             WeaklyAsymmetricallyComparable<I1, I2, C, P1, P2>,
-            InvokableRelation<C, X1, X2>>;
+            IndirectInvokableRelation<C, Project<I1, P1>, Project<I2, P2>>>;
 
         template<typename I1, typename I2, typename C = equal_to, typename P1 = ident,
             typename P2 = ident>
@@ -559,7 +646,7 @@ namespace ranges
                 template<typename I, typename S>
                 auto requires_(I i, S s) -> decltype(
                     concepts::valid_expr(
-                        concepts::model_of<Iterator, I>(),
+                        concepts::model_of<WeakIterator, I>(),
                         concepts::model_of<Regular, S>(),
                         concepts::model_of<EqualityComparable, I, S>()
                     ));

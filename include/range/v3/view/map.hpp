@@ -16,7 +16,9 @@
 
 #include <utility>
 #include <range/v3/range_fwd.hpp>
-#include <range/v3/utility/pipeable.hpp>
+#include <range/v3/utility/meta.hpp>
+#include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/view.hpp>
 #include <range/v3/view/transform.hpp>
 
@@ -65,9 +67,9 @@ namespace ranges
 
                 template<typename Rng,
                     CONCEPT_REQUIRES_(Concept<Rng>())>
-                keys_range_view<Rng> operator()(Rng && rng) const
+                keys_range_view<all_t<Rng>> operator()(Rng && rng) const
                 {
-                    return {std::forward<Rng>(rng), detail::get_first{}};
+                    return {all(std::forward<Rng>(rng)), detail::get_first{}};
                 }
             #ifndef RANGES_DOXYGEN_INVOKED
                 template<typename Rng,
@@ -92,9 +94,9 @@ namespace ranges
 
                 template<typename Rng,
                     CONCEPT_REQUIRES_(Concept<Rng>())>
-                values_view<Rng> operator()(Rng && rng) const
+                values_view<all_t<Rng>> operator()(Rng && rng) const
                 {
-                    return {std::forward<Rng>(rng), detail::get_second{}};
+                    return {all(std::forward<Rng>(rng)), detail::get_second{}};
                 }
             #ifndef RANGES_DOXYGEN_INVOKED
                 template<typename Rng,
@@ -112,11 +114,17 @@ namespace ranges
 
             /// \relates keys_fn
             /// \ingroup group-views
-            constexpr view<keys_fn> keys{};
+            namespace
+            {
+                constexpr auto&& keys = static_const<view<keys_fn>>::value;
+            }
 
             /// \relates values_fn
             /// \ingroup group-views
-            constexpr view<values_fn> values{};
+            namespace
+            {
+                constexpr auto&& values = static_const<view<values_fn>>::value;
+            }
         }
         /// @}
     }

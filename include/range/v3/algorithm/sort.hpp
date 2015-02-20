@@ -44,10 +44,10 @@
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/algorithm/move_backward.hpp>
 #include <range/v3/algorithm/partial_sort.hpp>
 #include <range/v3/algorithm/heap_algorithm.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -94,9 +94,8 @@ namespace ranges
             template<typename I, typename C, typename P>
             inline void unguarded_linear_insert(I end, iterator_value_t<I> val, C &pred, P &proj)
             {
-                using R = iterator_common_reference_t<I>;
                 I next = prev(end);
-                while(pred(proj(R(val)), proj(R(*next))))
+                while(pred(proj(val), proj(*next)))
                 {
                     *end = iter_move(next);
                     end = next;
@@ -108,9 +107,8 @@ namespace ranges
             template<typename I, typename C, typename P>
             inline void linear_insert(I begin, I end, C &pred, P &proj)
             {
-                using R = iterator_common_reference_t<I>;
                 iterator_value_t<I> val = iter_move(end);
-                if(pred(proj(R(val)), proj(R(*begin))))
+                if(pred(proj(val), proj(*begin)))
                 {
                     move_backward(begin, end, end + 1);
                     *begin = std::move(val);
@@ -195,7 +193,7 @@ namespace ranges
                 auto &&proj = invokable(proj_);
                 if(begin == end_)
                     return begin;
-                I end = next_to(begin, end_);
+                I end = ranges::next(begin, end_);
                 sort_fn::introsort_loop(begin, end, sort_fn::log2(end - begin) * 2, pred, proj);
                 sort_fn::final_insertion_sort(begin, end, pred, proj);
                 return end;
@@ -212,7 +210,10 @@ namespace ranges
 
         /// \sa `sort_fn`
         /// \ingroup group-algorithms
-        constexpr sort_fn sort{};
+        namespace
+        {
+            constexpr auto&& sort = static_const<sort_fn>::value;
+        }
 
         /// @}
     } // namespace v3

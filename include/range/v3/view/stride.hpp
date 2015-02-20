@@ -24,10 +24,13 @@
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_adaptor.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/box.hpp>
-#include <range/v3/utility/pipeable.hpp>
+#include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/view.hpp>
+#include <range/v3/view/all.hpp>
 
 namespace ranges
 {
@@ -106,14 +109,14 @@ namespace ranges
                 {
                     RANGES_ASSERT(0 == offset());
                     RANGES_ASSERT(it != ranges::end(rng_->mutable_base()));
-                    offset() = advance_bounded(it, rng_->stride_ + offset(),
+                    offset() = ranges::advance(it, rng_->stride_ + offset(),
                         ranges::end(rng_->mutable_base()));
                 }
                 CONCEPT_REQUIRES(BidirectionalIterable<Rng>())
                 void prev(iterator &it)
                 {
                     clean();
-                    offset() = advance_bounded(it, -rng_->stride_ + offset(),
+                    offset() = ranges::advance(it, -rng_->stride_ + offset(),
                         ranges::begin(rng_->mutable_base()));
                     RANGES_ASSERT(0 == offset());
                 }
@@ -132,10 +135,10 @@ namespace ranges
                     if(n != 0)
                         clean();
                     if(0 < n)
-                        offset() = advance_bounded(it, n * rng_->stride_ + offset(),
+                        offset() = ranges::advance(it, n * rng_->stride_ + offset(),
                             ranges::end(rng_->mutable_base()));
                     else if(0 > n)
-                        offset() = advance_bounded(it, n * rng_->stride_ + offset(),
+                        offset() = ranges::advance(it, n * rng_->stride_ + offset(),
                             ranges::begin(rng_->mutable_base()));
                 }
             };
@@ -160,8 +163,8 @@ namespace ranges
             }
         public:
             stride_view() = default;
-            stride_view(Rng &&rng, difference_type_ stride)
-              : range_adaptor_t<stride_view>{std::forward<Rng>(rng)}
+            stride_view(Rng rng, difference_type_ stride)
+              : range_adaptor_t<stride_view>{std::move(rng)}
               , stride_(stride)
             {
                 RANGES_ASSERT(0 < stride_);
@@ -200,9 +203,9 @@ namespace ranges
 
             public:
                 template<typename Rng, CONCEPT_REQUIRES_(InputIterable<Rng>())>
-                stride_view<Rng> operator()(Rng && rng, range_difference_t<Rng> step) const
+                stride_view<all_t<Rng>> operator()(Rng && rng, range_difference_t<Rng> step) const
                 {
-                    return {std::forward<Rng>(rng), step};
+                    return {all(std::forward<Rng>(rng)), step};
                 }
 
             #ifndef RANGES_DOXYGEN_INVOKED
@@ -223,7 +226,10 @@ namespace ranges
 
             /// \relates stride_fn
             /// \ingroup group-views
-            constexpr view<stride_fn> stride{};
+            namespace
+            {
+                constexpr auto&& stride = static_const<view<stride_fn>>::value;
+            }
         }
         /// @}
     }

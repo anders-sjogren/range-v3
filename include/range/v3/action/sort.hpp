@@ -21,6 +21,7 @@
 #include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -73,12 +74,10 @@ namespace ranges
                         "The object on which action::sort operates must be a model of the "
                         "ForwardIterable concept.");
                     using I = range_iterator_t<Rng>;
-                    using V = iterator_common_reference_t<I>;
-                    CONCEPT_ASSERT_MSG(Invokable<P, V>(),
-                        "The projection argument passed to action::sort must accept objects "
-                        "of the range's common reference type.");
-                    using X = concepts::Invokable::result_t<P, V>;
-                    CONCEPT_ASSERT_MSG(InvokableRelation<C, X, X>(),
+                    CONCEPT_ASSERT_MSG(Projectable<I, P>(),
+                        "The projection function must accept objects of the iterator's value type, "
+                        "reference type, and rvalue reference type.");
+                    CONCEPT_ASSERT_MSG(IndirectInvokableRelation<C, Project<I, P>>(),
                         "The comparator passed to action::sort must accept objects returned "
                         "by the projection function, or of the range's value type if no projection "
                         "is specified.");
@@ -93,7 +92,10 @@ namespace ranges
             /// \ingroup group-actions
             /// \relates sort_fn
             /// \sa `action`
-            constexpr action<sort_fn> sort{};
+            namespace
+            {
+                constexpr auto&& sort = static_const<action<sort_fn>>::value;
+            }
         }
         /// @}
     }

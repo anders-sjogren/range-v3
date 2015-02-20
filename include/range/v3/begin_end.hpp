@@ -18,6 +18,7 @@
 #include <functional>
 #include <initializer_list>
 #include <range/v3/range_fwd.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -83,14 +84,14 @@ namespace ranges
                 return end(ref.get());
             }
 
-            template<typename T>
-            auto begin(ranges::reference_wrapper<T> ref) -> decltype(begin(ref.get()))
+            template<typename T, bool RValue>
+            auto begin(ranges::reference_wrapper<T, RValue> ref) -> decltype(begin(ref.get()))
             {
                 return begin(ref.get());
             }
 
-            template<typename T>
-            auto end(ranges::reference_wrapper<T> ref) -> decltype(end(ref.get()))
+            template<typename T, bool RValue>
+            auto end(ranges::reference_wrapper<T, RValue> ref) -> decltype(end(ref.get()))
             {
                 return end(ref.get());
             }
@@ -107,14 +108,14 @@ namespace ranges
                 return rend(ref.get());
             }
 
-            template<typename T>
-            auto rbegin(ranges::reference_wrapper<T> ref) -> decltype(rbegin(ref.get()))
+            template<typename T, bool RValue>
+            auto rbegin(ranges::reference_wrapper<T, RValue> ref) -> decltype(rbegin(ref.get()))
             {
                 return rbegin(ref.get());
             }
 
-            template<typename T>
-            auto rend(ranges::reference_wrapper<T> ref) -> decltype(rend(ref.get()))
+            template<typename T, bool RValue>
+            auto rend(ranges::reference_wrapper<T, RValue> ref) -> decltype(rend(ref.get()))
             {
                 return rend(ref.get());
             }
@@ -203,39 +204,63 @@ namespace ranges
 
         /// \ingroup group-core
         /// \return The result of an unqualified call to the `begin` free function
-        constexpr begin_fn begin {};
+        namespace
+        {
+            constexpr auto&& begin = static_const<begin_fn>::value;
+        }
 
         /// \ingroup group-core
         /// \return The result of an unqualified call to the `end` free function
-        constexpr end_fn end {};
+        namespace
+        {
+            constexpr auto&& end = static_const<end_fn>::value;
+        }
 
         /// \ingroup group-core
         /// \return The result of an unqualified call to the `begin` free function
         /// with a const-qualified argument.
-        constexpr cbegin_fn cbegin {};
+        namespace
+        {
+            constexpr auto&& cbegin = static_const<cbegin_fn>::value;
+        }
 
         /// \ingroup group-core
         /// \return The result of an unqualified call to the `end` free function
         /// with a const-qualified argument.
-        constexpr cend_fn cend {};
+        namespace
+        {
+            constexpr auto&& cend = static_const<cend_fn>::value;
+        }
 
         /// \ingroup group-core
         /// \return The result of an unqualified call to the `rbegin` free function
-        constexpr rbegin_fn rbegin {};
+        namespace
+        {
+            constexpr auto&& rbegin = static_const<rbegin_fn>::value;
+        }
 
         /// \ingroup group-core
         /// \return The result of an unqualified call to the `rend` free function
-        constexpr rend_fn rend {};
+        namespace
+        {
+            constexpr auto&& rend = static_const<rend_fn>::value;
+        }
 
         /// \ingroup group-core
         /// \return The result of an unqualified call to the `rbegin` free function
         /// with a const-qualified argument.
-        constexpr crbegin_fn crbegin {};
+        namespace
+        {
+            constexpr auto&& crbegin = static_const<crbegin_fn>::value;
+        }
 
         /// \ingroup group-core
         /// \return The result of an unqualified call to the `rend` free function
         /// with a const-qualified argument.
-        constexpr crend_fn crend {};
+        namespace
+        {
+            constexpr auto&& crend = static_const<crend_fn>::value;
+        }
     }
 }
 

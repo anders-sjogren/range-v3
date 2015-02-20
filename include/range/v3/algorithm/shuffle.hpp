@@ -23,6 +23,7 @@
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -33,6 +34,7 @@ namespace ranges
         namespace concepts
         {
             struct UniformRandomNumberGenerator
+              : refines<Function>
             {
                 template<typename Gen>
                 auto requires_(Gen rand) -> decltype(
@@ -53,10 +55,13 @@ namespace ranges
             template<typename I, typename S, typename Gen,
                 CONCEPT_REQUIRES_(RandomAccessIterator<I>() && IteratorRange<I, S>() &&
                                   Permutable<I>() &&
-                                  UniformRandomNumberGenerator<Gen>())>
+                                  UniformRandomNumberGenerator<Gen>() &&
+                                  Convertible<
+                                      concepts::UniformRandomNumberGenerator::result_t<Gen>,
+                                      concepts::WeaklyIncrementable::difference_t<I> >())>
             I operator()(I begin, S end_, Gen && gen) const
             {
-                I end = next_to(begin, end_);
+                I end = ranges::next(begin, end_);
                 auto d = end - begin;
                 if(d > 1)
                 {
@@ -75,7 +80,10 @@ namespace ranges
             template<typename Rng, typename Gen, typename I = range_iterator_t<Rng>,
                 CONCEPT_REQUIRES_(RandomAccessIterable<Rng &>() &&
                                   Permutable<I>() &&
-                                  UniformRandomNumberGenerator<Gen>())>
+                                  UniformRandomNumberGenerator<Gen>() &&
+                                  Convertible<
+                                      concepts::UniformRandomNumberGenerator::result_t<Gen>,
+                                      concepts::WeaklyIncrementable::difference_t<I> >())>
             I operator()(Rng & rng, Gen && rand) const
             {
                 return (*this)(begin(rng), end(rng), std::forward<Gen>(rand));
@@ -84,7 +92,10 @@ namespace ranges
 
         /// \sa `shuffle_fn`
         /// \ingroup group-algorithms
-        constexpr shuffle_fn shuffle {};
+        namespace
+        {
+            constexpr auto&& shuffle = static_const<shuffle_fn>::value;
+        }
 
         /// @}
     } // namespace v3

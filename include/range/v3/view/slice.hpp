@@ -22,9 +22,10 @@
 #include <range/v3/range.hpp>
 #include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/optional.hpp>
-#include <range/v3/utility/pipeable.hpp>
+#include <range/v3/utility/functional.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
 #include <range/v3/utility/counted_iterator.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/view/all.hpp>
 #include <range/v3/view/counted.hpp>
 #include <range/v3/view/drop.hpp>
@@ -55,7 +56,7 @@ namespace ranges
                     if(SizedIterable<Rng>() && !BoundedIterable<Rng>())
                         return next(ranges::begin(rng), distance(rng) + i);
                     // Otherwise, probably faster to count from the back.
-                    return next(next_to(ranges::begin(rng), ranges::end(rng)), i);
+                    return next(ranges::next(ranges::begin(rng), ranges::end(rng)), i);
                 }
                 return next(ranges::begin(rng), i);
             }
@@ -76,9 +77,8 @@ namespace ranges
             {
             private:
                 friend range_access;
-                using base_range_t = view::all_t<Rng>;
                 using difference_type_ = range_difference_t<Rng>;
-                base_range_t rng_;
+                Rng rng_;
                 difference_type_ from_, count_;
                 optional<range_iterator_t<Rng>> begin_;
 
@@ -105,8 +105,8 @@ namespace ranges
                 slice_view_(slice_view_ const &that)
                   : rng_(that.rng_), from_(that.from_), count_(that.count_), begin_{}
                 {}
-                slice_view_(Rng && rng, difference_type_ from, difference_type_ count)
-                  : rng_(view::all(std::forward<Rng>(rng))), from_(from), count_(count), begin_{}
+                slice_view_(Rng rng, difference_type_ from, difference_type_ count)
+                  : rng_(std::move(rng)), from_(from), count_(count), begin_{}
                 {}
                 slice_view_& operator=(slice_view_ &&that)
                 {
@@ -128,11 +128,11 @@ namespace ranges
                 {
                     return static_cast<range_size_t<Rng>>(count_);
                 }
-                base_range_t & base()
+                Rng & base()
                 {
                     return rng_;
                 }
-                base_range_t const & base() const
+                Rng const & base() const
                 {
                     return rng_;
                 }
@@ -143,14 +143,13 @@ namespace ranges
               : range_interface<slice_view<Rng>>
             {
             private:
-                using base_range_t = view::all_t<Rng>;
                 using difference_type_ = range_difference_t<Rng>;
-                base_range_t rng_;
+                Rng rng_;
                 difference_type_ from_, count_;
             public:
                 slice_view_() = default;
-                slice_view_(Rng && rng, difference_type_ from, difference_type_ count)
-                  : rng_(view::all(std::forward<Rng>(rng))), from_(from), count_(count)
+                slice_view_(Rng rng, difference_type_ from, difference_type_ count)
+                  : rng_(std::move(rng)), from_(from), count_(count)
                 {
                     RANGES_ASSERT(0 <= count_);
                 }
@@ -164,14 +163,16 @@ namespace ranges
                     return detail::pos_at_(rng_, from_, iterable_concept<Rng>{},
                         is_infinite<Rng>{}) + count_;
                 }
-                CONCEPT_REQUIRES(Iterable<Rng const>())
-                range_iterator_t<Rng const> begin() const
+                template<typename BaseRng = Rng,
+                    CONCEPT_REQUIRES_(Iterable<BaseRng const>())>
+                range_iterator_t<BaseRng const> begin() const
                 {
                     return detail::pos_at_(rng_, from_, iterable_concept<Rng>{},
                         is_infinite<Rng>{});
                 }
-                CONCEPT_REQUIRES(Iterable<Rng const>())
-                range_iterator_t<Rng const> end() const
+                template<typename BaseRng = Rng,
+                    CONCEPT_REQUIRES_(Iterable<BaseRng const>())>
+                range_iterator_t<BaseRng const> end() const
                 {
                     return detail::pos_at_(rng_, from_, iterable_concept<Rng>{},
                         is_infinite<Rng>{}) + count_;
@@ -180,11 +181,11 @@ namespace ranges
                 {
                     return static_cast<range_size_t<Rng>>(count_);
                 }
-                base_range_t & base()
+                Rng & base()
                 {
                     return rng_;
                 }
-                base_range_t const & base() const
+                Rng const & base() const
                 {
                     return rng_;
                 }
@@ -221,11 +222,11 @@ namespace ranges
                 friend view_access;
 
                 template<typename Rng>
-                static slice_view<Rng>
+                static slice_view<all_t<Rng>>
                 invoke_(Rng && rng, range_difference_t<Rng> from, range_difference_t<Rng> count,
                     concepts::InputIterable *, concepts::Iterable * = nullptr)
                 {
-                    return {std::forward<Rng>(rng), from, count};
+                    return {all(std::forward<Rng>(rng)), from, count};
                 }
                 template<typename Rng,
                     CONCEPT_REQUIRES_(!Range<Rng>() && std::is_lvalue_reference<Rng>())>
@@ -409,7 +410,10 @@ namespace ranges
 
             /// \relates slice_fn
             /// \ingroup group-views
-            constexpr view<slice_fn> slice{};
+            namespace
+            {
+                constexpr auto&& slice = static_const<view<slice_fn>>::value;
+            }
         }
         /// @}
     }

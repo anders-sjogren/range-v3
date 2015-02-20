@@ -18,6 +18,8 @@
 #include <type_traits>
 #include <range/v3/range_fwd.hpp>
 #include <range/v3/utility/box.hpp>
+#include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/utility/integer_sequence.hpp>
 
 namespace ranges
@@ -95,17 +97,21 @@ namespace ranges
 
         struct make_compressed_tuple_fn
         {
+            using expects_wrapped_references = void;
             template<typename...Ts>
             constexpr auto operator()(Ts &&... ts) const ->
-                compressed_tuple<Ts...>
+                compressed_tuple<bind_element_t<Ts>...>
             {
-                return compressed_tuple<Ts...>{detail::forward<Ts>(ts)...};
+                return compressed_tuple<bind_element_t<Ts>...>{detail::forward<Ts>(ts)...};
             }
         };
         
         /// \ingroup group-utility
         /// \sa `make_compressed_tuple_fn`
-        constexpr make_compressed_tuple_fn make_compressed_tuple {};
+        namespace
+        {
+            constexpr auto&& make_compressed_tuple = static_const<make_compressed_tuple_fn>::value;
+        }
 
         /// @}
     }

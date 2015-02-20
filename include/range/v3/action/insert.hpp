@@ -21,9 +21,9 @@
 #include <range/v3/begin_end.hpp>
 #include <range/v3/range_traits.hpp>
 #include <range/v3/utility/functional.hpp>
-#include <range/v3/utility/pipeable.hpp>
 #include <range/v3/utility/common_iterator.hpp>
 #include <range/v3/action/concepts.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -178,7 +178,10 @@ namespace ranges
         /// \endcond
 
         /// \ingroup group-actions
-        constexpr adl_insert_detail::insert_fn insert{};
+        namespace
+        {
+            constexpr auto&& insert = static_const<adl_insert_detail::insert_fn>::value;
+        }
 
         namespace action
         {

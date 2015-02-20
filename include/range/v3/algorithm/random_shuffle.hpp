@@ -23,6 +23,7 @@
 #include <range/v3/utility/iterator.hpp>
 #include <range/v3/utility/iterator_concepts.hpp>
 #include <range/v3/utility/iterator_traits.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -66,7 +67,7 @@ namespace ranges
                 CONCEPT_REQUIRES_(RandomAccessIterator<I>() && IteratorRange<I, S>() && Permutable<I>())>
             I operator()(I begin, S end_) const
             {
-                I end = next_to(begin, end_);
+                I end = ranges::next(begin, end_);
                 auto d = end - begin;
                 if(d > 1)
                 {
@@ -89,7 +90,7 @@ namespace ranges
                                   RandomNumberGenerator<Gen, iterator_difference_t<I>>())>
             I operator()(I begin, S end_, Gen && rand) const
             {
-                I end = next_to(begin, end_);
+                I end = ranges::next(begin, end_);
                 auto d = end - begin;
                 if(d > 1)
                 {
@@ -122,7 +123,10 @@ namespace ranges
 
         /// \sa `random_shuffle_fn`
         /// \ingroup group-algorithms
-        constexpr random_shuffle_fn random_shuffle {};
+        namespace
+        {
+            constexpr auto&& random_shuffle = static_const<random_shuffle_fn>::value;
+        }
 
         /// @}
     } // namespace v3

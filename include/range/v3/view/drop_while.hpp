@@ -20,10 +20,11 @@
 #include <range/v3/range_traits.hpp>
 #include <range/v3/range_concepts.hpp>
 #include <range/v3/range_interface.hpp>
+#include <range/v3/utility/meta.hpp>
 #include <range/v3/utility/optional.hpp>
-#include <range/v3/utility/pipeable.hpp>
-#include <range/v3/utility/invokable.hpp>
 #include <range/v3/utility/functional.hpp>
+#include <range/v3/utility/semiregular.hpp>
+#include <range/v3/utility/static_const.hpp>
 #include <range/v3/algorithm/find_if_not.hpp>
 #include <range/v3/view/all.hpp>
 #include <range/v3/view/view.hpp>
@@ -40,10 +41,9 @@ namespace ranges
        {
         private:
             friend range_access;
-            using base_range_t = view::all_t<Rng>;
             using difference_type_ = range_difference_t<Rng>;
-            base_range_t rng_;
-            semiregular_invokable_t<Pred> pred_;
+            Rng rng_;
+            semiregular_t<invokable_t<Pred>> pred_;
             optional<range_iterator_t<Rng>> begin_;
 
             range_iterator_t<Rng> get_begin_()
@@ -60,8 +60,8 @@ namespace ranges
             drop_while_view(drop_while_view const &that)
               : rng_(that.rng_), pred_(that.pred_), begin_{}
             {}
-            drop_while_view(Rng && rng, Pred pred)
-              : rng_(view::all(std::forward<Rng>(rng))), pred_(invokable(std::move(pred))), begin_{}
+            drop_while_view(Rng rng, Pred pred)
+              : rng_(std::move(rng)), pred_(invokable(std::move(pred))), begin_{}
             {}
             drop_while_view& operator=(drop_while_view &&that)
             {
@@ -85,11 +85,11 @@ namespace ranges
             {
                 return ranges::end(rng_);
             }
-            base_range_t & base()
+            Rng & base()
             {
                 return rng_;
             }
-            base_range_t const & base() const
+            Rng const & base() const
             {
                 return rng_;
             }
@@ -111,14 +111,14 @@ namespace ranges
                 template<typename Rng, typename Pred>
                 using Concept = meta::and_<
                     InputIterable<Rng>,
-                    InvokablePredicate<Pred, range_common_reference_t<Rng>>>;
+                    IndirectInvokablePredicate<Pred, range_iterator_t<Rng>>>;
 
                 template<typename Rng, typename Pred,
                     CONCEPT_REQUIRES_(Concept<Rng, Pred>())>
-                drop_while_view<Rng, Pred>
+                drop_while_view<all_t<Rng>, Pred>
                 operator()(Rng && rng, Pred pred) const
                 {
-                    return {std::forward<Rng>(rng), std::move(pred)};
+                    return {all(std::forward<Rng>(rng)), std::move(pred)};
                 }
             #ifndef RANGES_DOXYGEN_INVOKED
                 template<typename Rng, typename Pred,
@@ -128,7 +128,7 @@ namespace ranges
                     CONCEPT_ASSERT_MSG(InputIterable<Rng>(),
                         "The first argument to view::drop_while must be a model of the "
                         "InputIterable concept");
-                    CONCEPT_ASSERT_MSG(InvokablePredicate<Pred, range_common_reference_t<Rng>>(),
+                    CONCEPT_ASSERT_MSG(IndirectInvokablePredicate<Pred, range_iterator_t<Rng>>(),
                         "The second argument to view::drop_while must be callable with "
                         "an argument of the range's common reference type, and its return value "
                         "must be convertible to bool");
@@ -138,7 +138,10 @@ namespace ranges
 
             /// \relates drop_while_fn
             /// \ingroup group-views
-            constexpr view<drop_while_fn> drop_while{};
+            namespace
+            {
+                constexpr auto&& drop_while = static_const<view<drop_while_fn>>::value;
+            }
         }
         /// @}
     }
