@@ -29,8 +29,6 @@ namespace ranges
         namespace adl_detail
         {
             template<typename I, typename S, typename F, typename P = ident,
-                typename V = iterator_common_reference_t<I>,
-                typename X = concepts::Invokable::result_t<P, V>,
                 CONCEPT_REQUIRES_(InputIterator<I>() && IteratorRange<I, S>() &&
                     IndirectInvokable<F, Project<I, P>>())>
             I for_each(I begin, S end, F fun_, P proj_ = P{})
@@ -47,7 +45,7 @@ namespace ranges
             template<typename Rng, typename F, typename P = ident,
                 typename I = range_iterator_t<Rng>,
                 CONCEPT_REQUIRES_(InputIterable<Rng &>() && IndirectInvokable<F, Project<I, P>>())>
-            I for_each(Rng &&rng, F fun, P proj = P{})
+            I for_each(Rng &rng, F fun, P proj = P{})
             {
                 return for_each(begin(rng), end(rng), std::move(fun), std::move(proj));
             }
@@ -56,8 +54,7 @@ namespace ranges
         struct for_each_fn
         {
             template <typename... Args>
-            constexpr auto operator()(Args&&... args) const ->
-            decltype(for_each(std::forward<Args>(args)...))
+            constexpr decltype(auto) operator()(Args&&... args) const
             {
                 using namespace adl_detail;
                 return for_each(std::forward<Args>(args)...);

@@ -26,6 +26,20 @@
 #include <range/v3/utility/common_type.hpp>
 #include <range/v3/utility/nullptr_v.hpp>
 
+struct soft_fail_mode_t{};
+struct hard_fail_mode_t{};
+
+//The first macros basically just quote the arguments, to avoid comma problems.
+//http://stackoverflow.com/questions/13842468/comma-in-c-c-macro
+#define CONCEPT_TEMPLATE_PARAMETERS(...) __VA_ARGS__
+#define CONCEPT_PARAMETERS(...) __VA_ARGS__
+#define CONCEPT_VALID_EXPRESSIONS(...) __VA_ARGS__
+#define CONCEPT_REQUIRES_FN_IMPL(tpar,par,valexpr)\
+template< tpar >\
+auto requires_(soft_fail_mode_t fail_mode, par) -> decltype(concepts::valid_expr(valexpr));\
+template< tpar >\
+void requires_(hard_fail_mode_t fail_mode, par) { using test = decltype(concepts::valid_expr(valexpr)); };
+
 namespace ranges
 {
     inline namespace v3
@@ -303,29 +317,15 @@ namespace ranges
                 template<class T, class U> using C = value_t<T, U>;
                 template<class T, class U> using R = common_reference_t<T const &, U const &>;
               
-    struct soft_fail_mode_t{};
-    struct hard_fail_mode_t{};
-                  
-    //The first macros basically just quote the arguments, to avoid comma problems.
-    //http://stackoverflow.com/questions/13842468/comma-in-c-c-macro
-    #define CONCEPT_TEMPLATE_PARAMETERS(...) __VA_ARGS__
-    #define CONCEPT_PARAMETERS(...) __VA_ARGS__
-    #define CONCEPT_VALID_EXPRESSIONS(...) __VA_ARGS__
-    #define CONCEPT_REQUIRES_IMPL(tpar,par,valexpr)\
-    template< tpar >\
-    auto requires_(soft_fail_mode_t fail_mode, par) -> decltype(concepts::valid_expr(valexpr));\
-    template< tpar >\
-    void requires_(hard_fail_mode_t fail_mode, par) { using test = decltype(concepts::valid_expr(valexpr)); };
-
-                CONCEPT_REQUIRES_IMPL(
-                    CONCEPT_TEMPLATE_PARAMETERS(
-                        typename T, typename U,
-                        enable_if_t<!std::is_same<uncvref_t<T>, uncvref_t<U>>::value> = 0),
-                    CONCEPT_PARAMETERS(T t, U u),
-                    CONCEPT_VALID_EXPRESSIONS(
-                        concepts::model_of<CommonReference, T const &, U const &>(fail_mode),
-                        concepts::model_of<CommonReference, C<T,U> &, R<T,U>>(fail_mode))
-                 )
+//                CONCEPT_REQUIRES_FN_IMPL(
+//                    CONCEPT_TEMPLATE_PARAMETERS(
+//                        typename T, typename U,
+//                        enable_if_t<!std::is_same<uncvref_t<T>, uncvref_t<U>>::value> = 0),
+//                    CONCEPT_PARAMETERS(T t, U u),
+//                    CONCEPT_VALID_EXPRESSIONS(
+//                        concepts::model_of<CommonReference, T const &, U const &>(fail_mode),
+//                        concepts::model_of<CommonReference, C<T,U> &, R<T,U>>(fail_mode))
+//                 )
 
                 template<typename T, typename U, typename...Rest,
                     typename Common_ = Common,
