@@ -94,8 +94,6 @@ namespace ranges
             private:
                 template<typename...Us>
                 friend union variant_data;
-                template<typename U>
-                using enable_if_ok = enable_if_t<meta::in<U, meta::list<Ts...>>::value>;
                 using head_t = decay_t<meta::if_<std::is_reference<T>, ref_t<T &>, T>>;
                 using tail_t = variant_data<Ts...>;
 
@@ -115,12 +113,12 @@ namespace ranges
                 {}
                 // BUGBUG in-place construction?
                 template<typename U,
-                    enable_if_t<std::is_constructible<head_t, U>::value> = 0>
+                    meta::if_<std::is_constructible<head_t, U>, int> = 0>
                 variant_data(meta::size_t<0>, U &&u)
                   : head(std::forward<U>(u))
                 {}
                 template<std::size_t N, typename U,
-                    enable_if_t<0 != N && std::is_constructible<tail_t, meta::size_t<N - 1>, U>::value> = 0>
+                    meta::if_c<0 != N && std::is_constructible<tail_t, meta::size_t<N - 1>, U>::value, int> = 0>
                 variant_data(meta::size_t<N>, U &&u)
                   : tail{meta::size_t<N - 1>{}, std::forward<U>(u)}
                 {}
@@ -211,7 +209,7 @@ namespace ranges
                   : t_(std::forward<T>(t))
                 {}
                 template<typename U,
-                    enable_if_t<std::is_constructible<U, T>::value> = 0>
+                    meta::if_<std::is_constructible<U, T>, int> = 0>
                 void operator()(U &u) const
                 {
                     ::new((void*)std::addressof(u)) U(std::forward<T>(t_));
@@ -331,7 +329,7 @@ namespace ranges
                 template<typename T, std::size_t N>
                 void operator()(T &&t, meta::size_t<N>) const
                 {
-                    using E = meta::list_element_c<N, meta::list<From...>>;
+                    using E = meta::at_c<meta::list<From...>, N>;
                     using F = meta::find<meta::list<To...>, E>;
                     static constexpr std::size_t M = sizeof...(To) - F::size();
                     var_.template set<M>(std::forward<T>(t));
@@ -410,7 +408,7 @@ namespace ranges
               : which_((std::size_t)-1), data_{}
             {}
             template<std::size_t N, typename U,
-                enable_if_t<std::is_constructible<data_t, meta::size_t<N>, U>::value> = 0>
+                meta::if_<std::is_constructible<data_t, meta::size_t<N>, U>, int> = 0>
             tagged_variant(meta::size_t<N> n, U &&u)
               : which_(N), data_{n, detail::forward<U>(u)}
             {
@@ -463,7 +461,7 @@ namespace ranges
                 return sizeof...(Ts);
             }
             template<std::size_t N, typename U,
-                enable_if_t<std::is_constructible<data_t, meta::size_t<N>, U>::value> = 0>
+                meta::if_<std::is_constructible<data_t, meta::size_t<N>, U>, int> = 0>
             void set(U &&u)
             {
                 clear_();
@@ -537,9 +535,9 @@ namespace ranges
         template<std::size_t N, typename...Ts>
         struct tagged_variant_element<N, tagged_variant<Ts...>>
           : meta::if_<
-                std::is_reference<meta::list_element_c<N, meta::list<Ts...>>>,
-                meta::id<meta::list_element_c<N, meta::list<Ts...>>>,
-                std::decay<meta::list_element_c<N, meta::list<Ts...>>>>
+                std::is_reference<meta::at_c<meta::list<Ts...>, N>>,
+                meta::id<meta::at_c<meta::list<Ts...>, N>>,
+                std::decay<meta::at_c<meta::list<Ts...>, N>>>
         {};
 
         ////////////////////////////////////////////////////////////////////////////////////////////

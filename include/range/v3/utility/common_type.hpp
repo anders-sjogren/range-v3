@@ -69,86 +69,30 @@ namespace ranges
             template<typename T, typename U>
             struct builtin_common_impl;
 
-            // Work around GCC #64970
-            // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64970
-#if defined(__GNUC__) && !defined(__clang__)
-            template<typename A, typename B, typename = void>
-            struct conditional_result
-            {};
-            template<typename A, typename B>
-            struct conditional_result<A, B, meta::void_<decltype(true ? std::declval<A>() : std::declval<B>())>>
-            {
-                using type = decltype(true ? std::declval<A>() : std::declval<B>());
-            };
-
-            template<typename T, typename U>
-            using builtin_common_t = meta::eval<meta::apply<builtin_common_impl<T, U>, T, U>>;
-
-            template<typename T, typename U>
-            struct builtin_common_impl
-            {
-                template<typename, typename, typename = T, typename = U, typename = void>
-                struct apply
-                {};
-                template<typename a, typename b, typename X, typename Y>
-                struct apply<a, b, X, Y, meta::void_<meta::eval<conditional_result<as_cref_t<X>, as_cref_t<Y>>>>>
-                {
-                    using type = decay_t<meta::eval<conditional_result<as_cref_t<X>, as_cref_t<Y>>>>;
-                };
-            };
-            template<typename T, typename U>
-            struct builtin_common_impl<T &&, U &&>
-            {
-                template<typename, typename, typename = T, typename = U, typename = void>
-                struct apply
-                {};
-                template<typename a, typename b, typename X, typename Y>
-                struct apply<a, b, X, Y, meta::void_<builtin_common_t<X &, Y &>>>
-                {
-                    using R = builtin_common_t<X &, Y &>;
-                    using type =
-                        meta::if_<std::is_reference<R>, meta::eval<std::remove_reference<R>> &&, R>;
-                };
-            };
-            template<typename T, typename U>
-            struct builtin_common_impl<T &, U &>
-            {
-                template<typename, typename, typename X = T, typename Y = U>
-                using apply = conditional_result<copy_cv_t<Y, X> &, copy_cv_t<X, Y> &>;
-            };
-            template<typename T, typename U>
-            struct builtin_common_impl<T &, U &&>
-              : builtin_common_impl<T &, U const &>
-            {};
-            template<typename T, typename U>
-            struct builtin_common_impl<T &&, U &>
-              : builtin_common_impl<T const &, U &>
-            {};
-#else
+        #if !defined(__GNUC__) || defined(__clang__) || __GNUC__ >= 5
             template<typename T, typename U>
             using conditional_result_t = decltype(true ? std::declval<T>() : std::declval<U>());
 
             template<typename T, typename U>
-            using builtin_common_t = meta::apply<builtin_common_impl<T, U>, T, U>;
+            using builtin_common_t = meta::apply<builtin_common_impl<T, U>>;
 
             template<typename T, typename U>
             struct builtin_common_impl
             {
-                template<typename, typename, typename X = T, typename Y = U>
+                template<typename X = T, typename Y = U>
                 using apply = decay_t<conditional_result_t<as_cref_t<X>, as_cref_t<Y>>>;
             };
             template<typename T, typename U>
             struct builtin_common_impl<T &&, U &&>
             {
-                template<typename, typename, typename X = T, typename Y = U,
-                    typename R = builtin_common_t<X &, Y &>>
+                template<typename X = T, typename Y = U, typename R = builtin_common_t<X &, Y &>>
                 using apply =
                     meta::if_<std::is_reference<R>, meta::eval<std::remove_reference<R>> &&, R>;
             };
             template<typename T, typename U>
             struct builtin_common_impl<T &, U &>
             {
-                template<typename, typename, typename X = T, typename Y = U>
+                template<typename X = T, typename Y = U>
                 using apply = conditional_result_t<copy_cv_t<Y, X> &, copy_cv_t<X, Y> &>;
             };
             template<typename T, typename U>
@@ -159,7 +103,59 @@ namespace ranges
             struct builtin_common_impl<T &&, U &>
               : builtin_common_impl<T const &, U &>
             {};
-#endif
+        #else
+            template<typename A, typename B, typename = void>
+            struct conditional_result
+            {};
+            template<typename A, typename B>
+            struct conditional_result<A, B, meta::void_<decltype(true ? std::declval<A>() : std::declval<B>())>>
+            {
+                using type = decltype(true ? std::declval<A>() : std::declval<B>());
+            };
+
+            template<typename T, typename U>
+            using builtin_common_t = meta::eval<meta::apply<builtin_common_impl<T, U>>>;
+
+            template<typename T, typename U>
+            struct builtin_common_impl
+            {
+                template<typename = T, typename = U, typename = void>
+                struct apply
+                {};
+                template<typename X, typename Y>
+                struct apply<X, Y, meta::void_<meta::eval<conditional_result<as_cref_t<X>, as_cref_t<Y>>>>>
+                {
+                    using type = decay_t<meta::eval<conditional_result<as_cref_t<X>, as_cref_t<Y>>>>;
+                };
+            };
+            template<typename T, typename U>
+            struct builtin_common_impl<T &&, U &&>
+            {
+                template<typename = T, typename = U, typename = void>
+                struct apply
+                {};
+                template<typename X, typename Y>
+                struct apply<X, Y, meta::void_<builtin_common_t<X &, Y &>>>
+                {
+                    using R = builtin_common_t<X &, Y &>;
+                    using type =
+                        meta::if_<std::is_reference<R>, meta::eval<std::remove_reference<R>> &&, R>;
+                };
+            };
+            template<typename T, typename U>
+            struct builtin_common_impl<T &, U &>
+            {
+                template<typename X = T, typename Y = U>
+                using apply = conditional_result<copy_cv_t<Y, X> &, copy_cv_t<X, Y> &>;
+            };
+            template<typename T, typename U>
+            struct builtin_common_impl<T &, U &&>
+              : builtin_common_impl<T &, U const &>
+            {};
+            template<typename T, typename U>
+            struct builtin_common_impl<T &&, U &>
+              : builtin_common_impl<T const &, U &>
+            {};
 
             ////////////////////////////////////////////////////////////////////////////////////////
             template<typename T, typename U, typename Enable = void>
@@ -195,6 +191,10 @@ namespace ranges
                     common_type_recurse<Meta, Ts...>,
                     meta::nil_>
             {};
+        #endif
+
+            template<typename T, typename U>
+            using lazy_builtin_common_t = meta::defer<builtin_common_t, T, U>;
         }
         /// \endcond
 
@@ -211,10 +211,24 @@ namespace ranges
 
         template<typename T>
         struct common_type<T>
-        {
-            using type = detail::decay_t<T>;
-        };
+          : std::decay<T>
+        {};
 
+    #if !defined(__GNUC__) || defined(__clang__) || __GNUC__ >= 5
+        template<typename T, typename U>
+        struct common_type<T, U>
+          : meta::if_c<
+                ( std::is_same<detail::decay_t<T>, T>::value &&
+                  std::is_same<detail::decay_t<U>, U>::value ),
+                meta::lazy::let<detail::lazy_builtin_common_t<T, U>>,
+                common_type<detail::decay_t<T>, detail::decay_t<U>>>
+        {};
+
+        template<typename T, typename U, typename... Vs>
+        struct common_type<T, U, Vs...>
+          : meta::lazy::let<meta::lazy::fold<meta::list<U, Vs...>, T, meta::quote<common_type_t>>>
+        {};
+    #else
         template<typename T, typename U>
         struct common_type<T, U>
           : detail::common_type2<T, U>
@@ -224,6 +238,7 @@ namespace ranges
         struct common_type<T, U, Vs...>
           : detail::common_type_recurse_if<common_type<T, U>, Vs...>
         {};
+    #endif
         /// @}
 
         /// \addtogroup group-utility Utility
@@ -252,7 +267,8 @@ namespace ranges
                     meta::quote_trait<std::add_const>>;
         }
 
-        /// Users should specialize this to hook the \c CommonReference concept.
+        /// Users can specialize this to hook the \c CommonReference concept.
+        /// \sa `common_reference`
         template<typename T, typename U, typename TQual, typename UQual>
         struct common_reference_base
         {};
@@ -298,6 +314,8 @@ namespace ranges
                     meta::eval<transform_reference<T>>,
                     meta::eval<transform_reference<U>>>;
 
+        #if !defined(__GNUC__) || defined(__clang__) || __GNUC__ >= 5
+        #else
             template<typename T, typename U, typename Enable = void>
             struct common_reference_if
               : common_reference_base_<T, U>
@@ -325,10 +343,12 @@ namespace ranges
                     common_reference_recurse<Meta, Ts...>,
                     meta::nil_>
             {};
+        #endif
         }
         /// \endcond
 
-        /// Users should specialize this to hook the \c CommonReference concept.
+        /// Users can specialize this to hook the \c CommonReference concept.
+        /// \sa `common_reference_base`
         template<typename ...Ts>
         struct common_reference
         {};
@@ -339,6 +359,25 @@ namespace ranges
             using type = T;
         };
 
+    #if !defined(__GNUC__) || defined(__clang__) || __GNUC__ >= 5
+        template<typename T, typename U>
+        struct common_reference<T, U>
+          : meta::if_<
+                meta::and_<
+                    meta::has_type<detail::lazy_builtin_common_t<T, U>>,
+                    meta::lazy::let<meta::lazy::or_<
+                        std::is_reference<detail::lazy_builtin_common_t<T, U>>,
+                        meta::not_<meta::has_type<detail::common_reference_base_<T, U>>>>>>,
+                detail::lazy_builtin_common_t<T, U>,
+                detail::common_reference_base_<T, U>>
+        {};
+
+        template<typename T, typename U, typename... Vs>
+        struct common_reference<T, U, Vs...>
+          : meta::lazy::let<meta::lazy::fold<meta::list<U, Vs...>, T,
+                meta::quote<common_reference_t>>>
+        {};
+    #else
         template<typename T, typename U>
         struct common_reference<T, U>
           : detail::common_reference_if<T, U>
@@ -348,6 +387,7 @@ namespace ranges
         struct common_reference<T, U, Vs...>
           : detail::common_reference_recurse_if<common_reference<T, U>, Vs...>
         {};
+    #endif
         /// @}
 
         /// \cond

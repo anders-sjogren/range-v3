@@ -112,11 +112,12 @@ using Pair2 = apply<Lambda2, int, short>;
 static_assert(std::is_same<Pair0, std::pair<int, short>>::value, "");
 static_assert(std::is_same<Pair1, std::pair<short, int>>::value, "");
 static_assert(std::is_same<Pair2, std::pair<short, std::pair<int, int>>>::value, "");
+static_assert(std::is_same<apply<lambda<_a, int>, int>, int>::value, "");
 
 // Not saying you should do it this way, but it's a good test.
 namespace l = meta::lazy;
 template<class L>
-using cart_prod=foldr<L,list<list<>>,
+using cart_prod = reverse_fold<L,list<list<>>,
     lambda<_a,_b,l::join<l::transform<_b,
         lambda<_c,l::join<l::transform<_a,
             lambda<_d,list<l::push_front<_d,_c>>>>>>>>>>;
@@ -130,13 +131,170 @@ static_assert(std::is_same<CartProd,
         meta::list<short, double> >
 >::value, "");
 
+static_assert(can_apply<lambda<_a, lazy::if_<std::is_integral<_a>, _a> >, int>::value, "");
+// I'm guessing this failure is due to GCC #64970
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64970
+#if !defined(__GNUC__) || defined(__clang__)
+static_assert(!can_apply<lambda<_a, lazy::if_<std::is_integral<_a>, _a> >, float>::value, "");
+#endif
+
 template<typename List>
-using rev = foldr<List, list<>, lambda<_a, _b, defer<push_back, _a, _b> > >;
+using rev = reverse_fold<List, list<>, lambda<_a, _b, defer<push_back, _a, _b> > >;
 static_assert(std::is_same<rev<list<int, short, double>>,
                            list<double, short, int>>::value, "");
 
+using uncvref_fn = lambda<_a, l::eval<std::remove_cv<l::eval<std::remove_reference<_a>>>>>;
+static_assert(std::is_same<apply<uncvref_fn, int const &>, int>::value, "");
+
+using L = list<int, short, int, float>;
+static_assert(std::is_same<find<L, int>, list<int, short, int, float>>::value, "");
+static_assert(std::is_same<reverse_find<L, int>, list<int, float>>::value, "");
+
+struct check_integral
+{
+    template <class T>
+    void operator()(T &&)
+    {
+        static_assert(std::is_integral<T>{}, "");
+    }
+};
+
+// Test for meta::let
+template<typename T, typename List>
+using find_index_ = let<
+    var<_a, List>,
+    var<_b, lazy::find<_a, T>>,
+    lazy::if_<
+        std::is_same<_b, list<>>,
+        meta::npos,
+        lazy::minus<lazy::size<_a>, lazy::size<_b>>>>;
+static_assert(find_index_<int, list<short, int, float>>{} == 1, "");
+static_assert(find_index_<double, list<short, int, float>>{} == meta::npos{}, "");
+
+// Test that the unselected branch does not get evaluated:
+template<typename T>
+using test_lazy_if_ = let<lazy::if_<std::is_void<T>, T, defer<std::pair, T> > >;
+static_assert(std::is_same<test_lazy_if_<void>, void>::value, "");
+
+// Test that and_ gets short-circuited:
+template<typename T>
+using test_lazy_and_ = let<lazy::and_<std::is_void<T>, defer<std::is_convertible, T> > >;
+static_assert(std::is_same<test_lazy_and_<int>, std::false_type>::value, "");
+
+// Test that and_ gets short-circuited:
+template<typename T>
+using test_lazy_or_ = let<lazy::or_<std::is_void<T>, defer<std::is_convertible, T> > >;
+static_assert(std::is_same<test_lazy_or_<void>, std::true_type>::value, "");
+
+template<typename A, int B = 0>
+struct lambda_test
+{
+};
+
 int main()
 {
+    // meta::sizeof_
+    static_assert(meta::sizeof_<int>{} == sizeof(int), "");
+
+    // meta::min
+    static_assert(meta::min<meta::size_t<0>, meta::size_t<1>>{} == 0, "");
+    static_assert(meta::min<meta::size_t<0>, meta::size_t<0>>{} == 0, "");
+    static_assert(meta::min<meta::size_t<1>, meta::size_t<0>>{} == 0, "");
+
+    // meta::max
+    static_assert(meta::max<meta::size_t<0>, meta::size_t<1>>{} == 1, "");
+    static_assert(meta::max<meta::size_t<1>, meta::size_t<0>>{} == 1, "");
+    static_assert(meta::max<meta::size_t<1>, meta::size_t<1>>{} == 1, "");
+
+    // meta::filter
+    {
+        using l = meta::list<int, double, short, float, long, char>;
+        using il = meta::list<int, short, long, char>;
+        using fl = meta::list<double, float>;
+
+        static_assert(std::is_same<il, meta::filter<l, meta::quote<std::is_integral>>>{}, "");
+        static_assert(std::is_same<fl, meta::filter<l, meta::quote<std::is_floating_point>>>{}, "");
+    }
+
+    // meta::for_each
+    {
+        using l = meta::list<int, long, short>;
+        meta::for_each(l{}, check_integral());
+    }
+
+    // meta::all_of with trivial lambda
+    {
+        static_assert(meta::all_of<list<int, short, double>, lambda<_a, std::is_convertible<_a,int>>>{}, "");
+        static_assert(!meta::all_of<list<int, short, double, char*>, lambda<_a, std::is_convertible<_a,int>>>{}, "");
+    }
+
+    // meta::index
+    {
+        using l = meta::list<int, long, short>;
+        static_assert(meta::find_index<l, int>{} == 0, "");
+        static_assert(meta::find_index<l, long>{} == 1, "");
+        static_assert(meta::find_index<l, short>{} == 2, "");
+        static_assert(meta::find_index<l, double>{} == meta::npos{}, "");
+        static_assert(meta::find_index<l, float>{} == meta::npos{}, "");
+
+        using l2 = meta::list<>;
+        static_assert(meta::find_index<l2, double>{} == meta::npos{}, "");
+
+        using namespace meta::placeholders;
+
+        using lambda = meta::lambda<_a, _b, meta::lazy::find_index<_b, _a>>;
+        using result = meta::apply<lambda, long, l>;
+        static_assert(result{} == 1, "");
+    }
+
+    // meta::reverse_find_index
+    {
+        using l = meta::list<int, long, short, int>;
+
+        static_assert(meta::reverse_find_index<l, int>{} == 3, "");
+        static_assert(meta::reverse_find_index<l, long>{} == 1, "");
+        static_assert(meta::reverse_find_index<l, short>{} == 2, "");
+        static_assert(meta::reverse_find_index<l, double>{} == meta::npos{}, "");
+        static_assert(meta::reverse_find_index<l, float>{} == meta::npos{}, "");
+
+        using l2 = meta::list<>;
+        static_assert(meta::reverse_find_index<l2, double>{} == meta::npos{}, "");
+
+        using lambda = meta::lambda<_a, _b, meta::lazy::reverse_find_index<_b, _a>>;
+        using result = meta::apply<lambda, long, l>;
+        static_assert(result{} == 1, "");
+    }
+
+    // meta::count
+    {
+        using l = meta::list<int, long, short, int>;
+        static_assert(meta::count<l, int>{} == 2, "");
+        static_assert(meta::count<l, short>{} == 1, "");
+        static_assert(meta::count<l, double>{} == 0, "");
+    }
+
+    // meta::count_if
+    {
+        using l = meta::list<int, long, short, int>;
+        static_assert(meta::count_if<l, lambda<_a, std::is_same<_a, int>>>{} == 2, "");
+        static_assert(meta::count_if<l, lambda<_b, std::is_same<_b, short>>>{} == 1, "");
+        static_assert(meta::count_if<l, lambda<_c, std::is_same<_c, double>>>{} == 0, "");
+    }
+
+    // pathological lambda test
+    {
+        using X = apply<lambda<_a, lambda_test<_a>>, int>;
+        static_assert(std::is_same<X, lambda_test<_a>>::value, "");
+    }
+
+    // meta::in
+    {
+        static_assert(in<list<int,int,short,float>, int>::value, "");
+        static_assert(in<list<int,int,short,float>, short>::value, "");
+        static_assert(in<list<int,int,short,float>, float>::value, "");
+        static_assert(!in<list<int,int,short,float>, double>::value, "");
+    }
+
     test_tuple_cat();
     return ::test_result();
 }

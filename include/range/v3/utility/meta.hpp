@@ -15,7 +15,9 @@
 #define RANGES_V3_UTILITY_META_HPP
 
 #include <type_traits>
+#include <initializer_list>
 #include <range/v3/utility/nullptr_v.hpp>
+#include <range/v3/utility/static_const.hpp>
 
 namespace ranges
 {
@@ -40,9 +42,167 @@ namespace ranges
             /// An empty type used for various things.
             struct nil_
             {};
-            #ifndef nil
-            using nil = nil_;
-            #endif
+
+            /// An integral constant wrapper for \c std::size_t.
+            template<std::size_t N>
+            using size_t = std::integral_constant<std::size_t, N>;
+
+            /// An integral constant wrapper for \c bool.
+            template<bool B>
+            using bool_ = std::integral_constant<bool, B>;
+
+            ////////////////////////////////////////////////////////////////////////////////////
+            // Math operations
+            /// An integral constant wrapper around the result of incrementing the
+            /// wrapped integer \c T::type::value.
+            template<typename T>
+            using inc = std::integral_constant<decltype(T::type::value), T::type::value + 1>;
+
+            /// An integral constant wrapper around the result of decrementing the
+            /// wrapped integer \c T::type::value.
+            template<typename T>
+            using dec = std::integral_constant<decltype(T::type::value), T::type::value - 1>;
+
+            /// An integral constant wrapper around the result of adding the
+            /// two wrapped integers \c T::type::value and \c U::type::value.
+            template<typename T, typename U>
+            using plus = std::integral_constant<decltype(T::type::value + U::type::value), T::type::value + U::type::value>;
+
+            /// An integral constant wrapper around the result of subtracting the
+            /// two wrapped integers \c T::type::value and \c U::type::value.
+            template<typename T, typename U>
+            using minus = std::integral_constant<decltype(T::type::value - U::type::value), T::type::value - U::type::value>;
+
+            /// An integral constant wrapper around the result of multiplying the
+            /// two wrapped integers \c T::type::value and \c U::type::value.
+            template<typename T, typename U>
+            using multiplies = std::integral_constant<decltype(T::type::value * U::type::value), T::type::value * U::type::value>;
+
+            /// An integral constant wrapper around the result of dividing the
+            /// two wrapped integers \c T::type::value and \c U::type::value.
+            template<typename T, typename U>
+            using divides = std::integral_constant<decltype(T::type::value / U::type::value), T::type::value / U::type::value>;
+
+            /// An integral constant wrapper around the remainder of dividing the
+            /// two wrapped integers \c T::type::value and \c U::type::value.
+            template<typename T>
+            using negate = std::integral_constant<decltype(-T::type::value), -T::type::value>;
+
+            /// An integral constant wrapper around the remainder of dividing the
+            /// two wrapped integers \c T::type::value and \c U::type::value.
+            template<typename T, typename U>
+            using modulus = std::integral_constant<decltype(T::type::value % U::type::value), T::type::value % U::type::value>;
+
+            /// A Boolean integral constant wrapper around the result of comparing
+            /// \c T::type::value and \c U::type::value for equality.
+            template<typename T, typename U>
+            using equal_to = bool_<T::type::value == U::type::value>;
+
+            /// A Boolean integral constant wrapper around the result of comparing
+            /// \c T::type::value and \c U::type::value for inequality.
+            template<typename T, typename U>
+            using not_equal_to = bool_<T::type::value != U::type::value>;
+
+            /// A Boolean integral constant wrapper around \c true if
+            /// \c T::type::value is greater than \c U::type::value; \c false, otherwise.
+            template<typename T, typename U>
+            using greater = bool_<(T::type::value > U::type::value)>;
+
+            /// A Boolean integral constant wrapper around \c true if
+            /// \c T::type::value is less than \c U::type::value; \c false, otherwise.
+            template<typename T, typename U>
+            using less = bool_<(T::type::value < U::type::value)>;
+
+            /// A Boolean integral constant wrapper around \c true if
+            /// \c T::type::value is greater than or equal to \c U::type::value; \c false,
+            /// otherwise.
+            template<typename T, typename U>
+            using greater_equal = bool_<(T::type::value >= U::type::value)>;
+
+            /// A Boolean integral constant wrapper around \c true if
+            /// \c T::type::value is less than or equal to \c U::type::value; \c false,
+            /// otherwise.
+            template<typename T, typename U>
+            using less_equal = bool_<(T::type::value <= U::type::value)>;
+
+            /// An integral constant wrapper around the result of bitwise-and'ing
+            /// the two wrapped integers \c T::type::value and \c U::type::value.
+            template<typename T, typename U>
+            using bit_and = std::integral_constant<decltype(T::type::value & U::type::value), T::type::value & U::type::value>;
+
+            /// An integral constant wrapper around the result of bitwise-or'ing
+            /// the two wrapped integers \c T::type::value and \c U::type::value.
+            template<typename T, typename U>
+            using bit_or = std::integral_constant<decltype(T::type::value | U::type::value), T::type::value | U::type::value>;
+
+            /// An integral constant wrapper around the result of
+            /// bitwise-exclusive-or'ing the two wrapped integers \c T::type::value and
+            /// \c U::type::value.
+            template<typename T, typename U>
+            using bit_xor = std::integral_constant<decltype(T::type::value ^ U::type::value), T::type::value ^ U::type::value>;
+
+            /// An integral constant wrapper around the result of
+            /// bitwise-complimenting the wrapped integer \c T::type::value.
+            template<typename T>
+            using bit_not = std::integral_constant<decltype(~T::type::value), ~T::type::value>;
+            /// @}
+
+            namespace lazy
+            {
+                template<typename T>
+                using inc = defer<inc, T>;
+
+                template<typename T>
+                using dec = defer<dec, T>;
+
+                template<typename T, typename U>
+                using plus = defer<plus, T, U>;
+
+                template<typename T, typename U>
+                using minus = defer<minus, T, U>;
+
+                template<typename T, typename U>
+                using multiplies = defer<multiplies, T, U>;
+
+                template<typename T, typename U>
+                using divides = defer<divides, T, U>;
+
+                template<typename T>
+                using negate = defer<negate, T>;
+
+                template<typename T, typename U>
+                using modulus = defer<modulus, T, U>;
+
+                template<typename T, typename U>
+                using equal_to = defer<equal_to, T, U>;
+
+                template<typename T, typename U>
+                using not_equal_to = defer<not_equal_to, T, U>;
+
+                template<typename T, typename U>
+                using greater = defer<greater, T, U>;
+
+                template<typename T, typename U>
+                using less = defer<less, T, U>;
+
+                template<typename T, typename U>
+                using greater_equal = defer<greater_equal, T, U>;
+
+                template<typename T, typename U>
+                using less_equal = defer<less_equal, T, U>;
+
+                template<typename T, typename U>
+                using bit_and = defer<bit_and, T, U>;
+
+                template<typename T, typename U>
+                using bit_or = defer<bit_or, T, U>;
+
+                template<typename T, typename U>
+                using bit_xor = defer<bit_xor, T, U>;
+
+                template<typename T>
+                using bit_not = defer<bit_not, T>;
+            }
 
             /// "Evaluate" the metafunction \p T by returning the nested \c T::type alias.
             template<typename T>
@@ -51,6 +211,15 @@ namespace ranges
             /// Evaluate the Metafunction Class \p F with the arguments \p Args.
             template<typename F, typename...Args>
             using apply = typename F::template apply<Args...>;
+
+            namespace lazy
+            {
+                template<typename T>
+                using eval = defer<eval, T>;
+
+                template<typename F, typename...Args>
+                using apply = defer<apply, F, Args...>;
+            }
 
             /// A Metafunction Class that always returns \p T.
             template<typename T>
@@ -95,14 +264,14 @@ namespace ranges
                     using type = std::true_type;
                 };
 
-                template<typename, typename, typename = void>
-                struct lazy_apply_
+                template<template<typename...> class C, typename, typename = void>
+                struct defer_
                 {};
 
-                template<typename F, typename...Ts>
-                struct lazy_apply_<F, list<Ts...>, void_<apply<F, Ts...>>>
+                template<template<typename...> class C, typename...Ts>
+                struct defer_<C, list<Ts...>, void_<C<Ts...>>>
                 {
-                    using type = apply<F, Ts...>;
+                    using type = C<Ts...>;
                 };
             }
             /// \endcond
@@ -112,20 +281,46 @@ namespace ranges
             template<typename T>
             using has_type = eval<meta_detail::has_type_<T>>;
 
-            /// A metafunction that evaluates the Metafunction Class `F` with
-            /// the arguments \c Args.
-            template<typename F, typename...Args>
-            struct lazy_apply
-              : meta_detail::lazy_apply_<F, list<Args...>>
+            ////////////////////////////////////////////////////////////////////////////////////
+            // defer
+            /// A wrapper that defers the instantiation of a template in a \c lambda
+            /// expression.
+            ///
+            /// In the code below, the lambda would ideally be written as
+            /// `lambda<_a,_b,push_back<_a,_b>>`, however this fails since `push_back`
+            /// expects its first argument to be a list, not a placeholder. Instead,
+            /// we express it using \c defer as follows:
+            ///
+            /// \code
+            /// template<typename List>
+            /// using reverse = reverse_fold<List, list<>, lambda<_a, _b, defer<push_back, _a, _b> > >;
+            /// \endcode
+            template<template<typename...> class C, typename...Ts>
+            struct defer
+              : meta_detail::defer_<C, list<Ts...>>
             {};
 
-            /// An integral constant wrapper for \c std::size_t.
-            template<std::size_t N>
-            using size_t = std::integral_constant<std::size_t, N>;
+            /// A metafunction that computes the size of the type \p T.
+            /// \par Complexity
+            /// \f$ O(1) \f$.
+            template<class T>
+            using sizeof_ = meta::size_t<sizeof(T)>;
 
-            /// An integral constant wrapper for \c bool.
-            template<bool B>
-            using bool_ = std::integral_constant<bool, B>;
+            /// A metafunction that computes the alignment required for
+            /// any instance of the type \p T.
+            /// \par Complexity
+            /// \f$ O(1) \f$.
+            template<class T>
+            using alignof_ = meta::size_t<alignof(T)>;
+
+            namespace lazy
+            {
+                template<typename T>
+                using sizeof_ = defer<sizeof_, T>;
+
+                template<typename T>
+                using alignof_ = defer<alignof_, T>;
+            }
 
             /// A metafunction that always returns its argument \p T.
             template<typename T>
@@ -203,25 +398,6 @@ namespace ranges
                 using apply = eval<apply<quote_i<T, C>, Ts...>>;
             };
 
-            ////////////////////////////////////////////////////////////////////////////////////
-            // defer
-            /// A wrapper that defers the instantiation of a template in a \c lambda
-            /// expression.
-            ///
-            /// In the code below, the lambda would ideally be written as
-            /// `lambda<_a,_b,push_back<_a,_b>>`, however this fails since `push_back`
-            /// expects its first argument to be a list, not a placeholder. Instead,
-            /// we express it using \c defer as follows:
-            ///
-            /// \code
-            /// template<typename List>
-            /// using reverse = foldr<List, list<>, lambda<_a, _b, defer<push_back, _a, _b> > >;
-            /// \endcode
-            template<template<typename...> class C, typename...Ts>
-            struct defer
-              : lazy_apply<quote<C>, Ts...>
-            {};
-
             /// Compose the Metafunction Classes \p Fs in the parameter pack
             /// \p Ts.
             template<typename...Fs>
@@ -279,30 +455,30 @@ namespace ranges
 
             /// A metafunction that unpacks the types in the type list
             /// \p List into the Metafunction Class \p F.
-            template<typename F, typename List>
-            struct lazy_apply_list
-            {};
+            namespace extension
+            {
+                template<typename F, typename List>
+                struct apply_list
+                {};
 
-            template<typename F, template<typename...> class T, typename ...Ts>
-            struct lazy_apply_list<F, T<Ts...>>
-              : lazy_apply<F, Ts...>
-            {};
+                template<typename F, template<typename...> class T, typename ...Ts>
+                struct apply_list<F, T<Ts...>>
+                  : lazy::apply<F, Ts...>
+                {};
 
-            template<typename F, typename T, T...Is>
-            struct lazy_apply_list<F, integer_sequence<T, Is...>>
-              : lazy_apply<F, std::integral_constant<T, Is>...>
-            {};
+                template<typename F, typename T, T...Is>
+                struct apply_list<F, integer_sequence<T, Is...>>
+                  : lazy::apply<F, std::integral_constant<T, Is>...>
+                {};
+            }
 
             /// Applies the Metafunction Class \p C using the types in
             /// the type list \p List as arguments.
             template<typename C, typename List>
-            using apply_list = eval<lazy_apply_list<C, List>>;
+            using apply_list = eval<extension::apply_list<C, List>>;
 
             namespace lazy
             {
-                template<typename F, typename List>
-                using lazy_apply_list = defer<lazy_apply_list, F, List>;
-
                 template<typename F, typename List>
                 using apply_list = defer<apply_list, F, List>;
             }
@@ -339,7 +515,7 @@ namespace ranges
                 {};
                 template<typename A, typename B, typename ...Ts>
                 struct impl<A, B, Ts...>
-                  : lazy_apply<F, B, A, Ts...>
+                  : lazy::apply<F, B, A, Ts...>
                 {};
             public:
                 template<typename ...Ts>
@@ -349,8 +525,8 @@ namespace ranges
 
             namespace lazy
             {
-                template<typename...Ts>
-                using flip = defer<flip, Ts...>;
+                template<typename F>
+                using flip = defer<flip, F>;
             }
 
             ////////////////////////////////////////////////////////////////////////////////////
@@ -360,6 +536,11 @@ namespace ranges
             {
                 template<typename...>
                 struct _if_
+                {};
+
+                template<typename If>
+                struct _if_<If>
+                  : std::enable_if<If::type::value>
                 {};
 
                 template<typename If, typename Then>
@@ -477,7 +658,20 @@ namespace ranges
 
                 template<typename Bool>
                 using not_ = defer<not_, Bool>;
+
+                template<typename...Bools>
+                using fast_and = defer<fast_and, Bools...>;
+
+                template<typename...Bools>
+                using fast_or = defer<fast_or, Bools...>;
             }
+
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // npos
+            /// A special value used to indicate no matches. It equals the maximum value
+            /// representable by `std::size_t`.
+            /// \ingroup group-meta
+            using npos = meta::size_t<std::size_t(-1)>;
 
             ////////////////////////////////////////////////////////////////////////////////////
             // list
@@ -627,15 +821,15 @@ namespace ranges
             }
 
             ////////////////////////////////////////////////////////////////////////////////////
-            // list_element
+            // at
             /// \cond
             namespace meta_detail
             {
                 template<typename VoidPtrs>
-                struct list_element_impl_;
+                struct at_impl_;
 
                 template<typename ...VoidPtrs>
-                struct list_element_impl_<list<VoidPtrs...>>
+                struct at_impl_<list<VoidPtrs...>>
                 {
                     static nil_ eval(...);
 
@@ -643,37 +837,37 @@ namespace ranges
                     static T eval(VoidPtrs..., T *, Us *...);
                 };
 
-                template<typename N, typename List>
-                struct list_element_
+                template<typename List, typename N>
+                struct at_
                 {};
 
-                template<typename N, typename...Ts>
-                struct list_element_<N, list<Ts...>>
-                  : decltype(list_element_impl_<repeat_n<N, void *>>::eval(_nullptr_v<id<Ts>>()...))
+                template<typename...Ts, typename N>
+                struct at_<list<Ts...>, N>
+                  : decltype(at_impl_<repeat_n<N, void *>>::eval(_nullptr_v<id<Ts>>()...))
                 {};
             }
             /// \endcond
 
             ////////////////////////////////////////////////////////////////////////////////////
-            // list_element
+            // at
             /// Return the \p N th element in the \c meta::list \p List.
             /// \par Complexity
             /// Amortized \f$ O(1) \f$.
             /// \ingroup group-meta
-            template<typename N, typename List>
-            using list_element = eval<meta_detail::list_element_<N, List>>;
+            template<typename List, typename N>
+            using at = eval<meta_detail::at_<List, N>>;
 
             /// Return the `N`th element in the \c meta::list \c List.
             /// \par Complexity
             /// Amortized \f$ O(1) \f$.
             /// \ingroup group-meta
-            template<std::size_t N, typename List>
-            using list_element_c = list_element<meta::size_t<N>, List>;
+            template<typename List, std::size_t N>
+            using at_c = at<List, meta::size_t<N>>;
 
             namespace lazy
             {
-                template<typename N, typename List>
-                using list_element = defer<list_element, N, List>;
+                template<typename List, typename N>
+                using at = defer<at, List, N>;
             }
 
             ////////////////////////////////////////////////////////////////////////////////////
@@ -698,12 +892,12 @@ namespace ranges
                     static id<list<Ts...>> eval(VoidPtrs..., id<Ts> *...);
                 };
 
-                template<typename N, typename List>
+                template<typename List, typename N>
                 struct drop_
                 {};
 
-                template<typename N, typename ...Ts>
-                struct drop_<N, list<Ts...>>
+                template<typename ...Ts, typename N>
+                struct drop_<list<Ts...>, N>
                   : decltype(drop_impl_<repeat_n<N, void *>>::eval(_nullptr_v<id<Ts>>()...))
                 {};
             }
@@ -714,21 +908,21 @@ namespace ranges
             /// \par Complexity
             /// \f$ O(1) \f$.
             /// \ingroup group-meta
-            template<typename N, typename List>
-            using drop = eval<meta_detail::drop_<N, List>>;
+            template<typename List, typename N>
+            using drop = eval<meta_detail::drop_<List, N>>;
 
             /// Return a new \c meta::list by removing the first \p N
             /// elements from \p List.
             /// \par Complexity
             /// \f$ O(1) \f$.
             /// \ingroup group-meta
-            template<std::size_t N, typename List>
-            using drop_c = eval<meta_detail::drop_<meta::size_t<N>, List>>;
+            template<typename List, std::size_t N>
+            using drop_c = eval<meta_detail::drop_<List, meta::size_t<N>>>;
 
             namespace lazy
             {
-                template<typename N, typename List>
-                using drop = defer<drop, N, List>;
+                template<typename List, typename N>
+                using drop = defer<drop, List, N>;
             }
 
             ////////////////////////////////////////////////////////////////////////////////////
@@ -773,7 +967,7 @@ namespace ranges
                 template<typename Head, typename ...List>
                 struct back_<list<Head, List...>>
                 {
-                    using type = list_element_c<sizeof...(List), list<Head, List...>>;
+                    using type = at_c<list<Head, List...>, sizeof...(List)>;
                 };
             }
             /// \endcond
@@ -941,6 +1135,45 @@ namespace ranges
             }
 
             ////////////////////////////////////////////////////////////////////////////////////
+            // reverse_find
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename List, typename T, typename State = list<>>
+                struct reverse_find_
+                {};
+
+                template<typename T, typename State>
+                struct reverse_find_<list<>, T, State>
+                {
+                    using type = State;
+                };
+
+                template<typename Head, typename ...List, typename T, typename State>
+                struct reverse_find_<list<Head, List...>, T, State>
+                  : reverse_find_<list<List...>, T, State>
+                {};
+
+                template<typename ...List, typename T, typename State>
+                struct reverse_find_<list<T, List...>, T, State>
+                  : reverse_find_<list<List...>, T, list<T, List...>>
+                {};
+            }
+            /// \endcond
+
+            /// Return the tail of the list \p List starting at the last occurrence
+            /// of \p T, if any such element exists; the empty list, otherwise.
+            /// \ingroup group-meta
+            template<typename List, typename T>
+            using reverse_find = eval<meta_detail::reverse_find_<List, T>>;
+
+            namespace lazy
+            {
+                template<typename List, typename T>
+                using reverse_find = defer<reverse_find, List, T>;
+            }
+
+            ////////////////////////////////////////////////////////////////////////////////////
             // find_if
             /// \cond
             namespace meta_detail
@@ -976,6 +1209,187 @@ namespace ranges
             }
 
             ////////////////////////////////////////////////////////////////////////////////////
+            // reverse_find_if
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename List, typename Fun, typename State = list<>>
+                struct reverse_find_if_
+                {};
+
+                template<typename Fun, typename State>
+                struct reverse_find_if_<list<>, Fun, State>
+                {
+                    using type = State;
+                };
+
+                template<typename Head, typename ...List, typename Fun, typename State>
+                struct reverse_find_if_<list<Head, List...>, Fun, State>
+                  : reverse_find_if_<list<List...>, Fun, if_<apply<Fun, Head>, list<Head, List...>, State>>
+                {};
+            }
+            /// \endcond
+
+            /// Return the tail of the list \p List starting at the last element
+            /// `A` such that `apply<Fun, A>::%value` is \c true, if any such element
+            /// exists; the empty list, otherwise.
+            /// \ingroup group-meta
+            template<typename List, typename Fun>
+            using reverse_find_if = eval<meta_detail::reverse_find_if_<List, Fun>>;
+
+            namespace lazy
+            {
+                template<typename List, typename Fun>
+                using reverse_find_if = defer<reverse_find_if, List, Fun>;
+            }
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////
+            // find_index
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename List, typename T>
+                struct find_index_
+                {
+                    static constexpr std::size_t i = List::size() - find<List, T>::size();
+                    using type = if_c<i == List::size(), npos, size_t<i>>;
+                };
+            } // namespace detail
+            /// \endcond
+
+            /// Finds the index of the first occurrence of the type \p T within the list \p List.
+            /// Returns `#meta::npos` if the type \p T was not found.
+            /// \par Complexity
+            /// \f$ O(N) \f$.
+            /// \ingroup group-meta
+            template<typename List, typename T>
+            using find_index = eval<meta_detail::find_index_<List, T>>;
+
+            namespace lazy
+            {
+                /// \sa `meta::index`
+                /// \ingroup group-meta
+                template<typename List, typename T>
+                using find_index = defer<find_index, List, T>;
+            }
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////
+            // reverse_find_index
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename List, typename T>
+                struct reverse_find_index_
+                {
+                    static constexpr std::size_t i = List::size() - reverse_find<List, T>::size();
+                    using type = if_c<i == List::size(), npos, size_t<i>>;
+                };
+            } // namespace detail
+            /// \endcond
+
+            /// Finds the index of the last occurrence of the type \p T within the list \p List.
+            /// Returns `#meta::npos` if the type \p T was not found.
+            /// \par Complexity
+            /// \f$ O(N) \f$.
+            /// \ingroup query
+            /// \sa `#meta::npos`
+            template<typename List, typename T>
+            using reverse_find_index = eval<meta_detail::reverse_find_index_<List, T>>;
+
+            namespace lazy
+            {
+                /// \sa 'meta::reverse_find_index'
+                /// \ingroup lazy_query
+                template<typename List, typename T>
+                using reverse_find_index = defer<reverse_find_index, List, T>;
+            }
+
+            ////////////////////////////////////////////////////////////////////////////////////
+            // fold
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename, typename, typename, typename = void>
+                struct fold_
+                {};
+
+                template<typename State, typename Fun>
+                struct fold_<list<>, State, Fun>
+                {
+                    using type = State;
+                };
+
+                template<typename Head, typename ...List, typename State, typename Fun>
+                struct fold_<list<Head, List...>, State, Fun, void_<apply<Fun, State, Head>>>
+                  : fold_<list<List...>, apply<Fun, State, Head>, Fun>
+                {};
+            }
+            /// \endcond
+
+            /// Return a new \c meta::list constructed by doing a left fold
+            /// of the list \p List using binary Metafunction Class \p Fun and
+            /// initial state \p State.
+            /// \par Complexity
+            /// \f$ O(N) \f$.
+            /// \ingroup group-meta
+            template<typename List, typename State, typename Fun>
+            using fold = eval<meta_detail::fold_<List, State, Fun>>;
+
+            /// An alias for `meta::fold`.
+            /// \par Complexity
+            /// \f$ O(N) \f$.
+            /// \ingroup group-meta
+            template<typename List, typename State, typename Fun>
+            using accumulate = fold<List, State, Fun>;
+
+            namespace lazy
+            {
+                template<typename List, typename State, typename Fun>
+                using fold = defer<fold, List, State, Fun>;
+
+                template<typename List, typename State, typename Fun>
+                using accumulate = defer<accumulate, List, State, Fun>;
+            }
+
+            ////////////////////////////////////////////////////////////////////////////////////
+            // reverse_fold
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename, typename, typename, typename = void>
+                struct reverse_fold_
+                {};
+
+                template<typename State, typename Fun>
+                struct reverse_fold_<list<>, State, Fun>
+                {
+                    using type = State;
+                };
+
+                template<typename Head, typename ...List, typename State, typename Fun>
+                struct reverse_fold_<list<Head, List...>, State, Fun, void_<eval<reverse_fold_<list<List...>, State, Fun>>>>
+                  : lazy::apply<Fun, eval<reverse_fold_<list<List...>, State, Fun>>, Head>
+                {};
+            }
+            /// \endcond
+
+            /// Return a new \c meta::list constructed by doing a right fold
+            /// of the list \p List using binary Metafunction Class \p Fun and
+            /// initial state \p State.
+            /// \par Complexity
+            /// \f$ O(N) \f$.
+            /// \ingroup group-meta
+            template<typename List, typename State, typename Fun>
+            using reverse_fold = eval<meta_detail::reverse_fold_<List, State, Fun>>;
+
+            namespace lazy
+            {
+                template<typename List, typename State, typename Fun>
+                using reverse_fold = defer<reverse_fold, List, State, Fun>;
+            }
+            /// @}
+
+            ////////////////////////////////////////////////////////////////////////////////////
             // in
             /// A Boolean integral constant wrapper around \c true if
             /// there is at least one occurrence of \p T in \p List.
@@ -989,43 +1403,57 @@ namespace ranges
                 using in = defer<in, List, T>;
             }
 
-            ////////////////////////////////////////////////////////////////////////////////////
-            // unique
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            // set
+            // Used to improve the performance of \c meta::unique.
             /// \cond
             namespace meta_detail
             {
-                template<typename List, typename Result>
-                struct unique_
-                {};
-
-                template<typename Result>
-                struct unique_<list<>, Result>
+                template <typename... Nodes>
+                struct root_ : Nodes...
                 {
-                    using type = Result;
                 };
 
-                template<typename Head, typename...List, typename Result>
-                struct unique_<list<Head, List...>, Result>
-                  : unique_<
-                        list<List...>,
-                        apply<
-                            if_<in<Result, Head>, quote_trait<id>, bind_back<quote<push_back>, Head>>,
-                            Result>>
-                {};
-            }
+                template <typename... Ts>
+                using set_ = root_<id<Ts>...>;
+
+                template <typename Set, typename T>
+                struct in_
+                {
+                };
+
+                template <typename... Set, typename T>
+                struct in_<list<Set...>, T> : std::is_base_of<id<T>, set_<Set...>>
+                {
+                };
+
+                template <typename Set, typename T>
+                struct insert_back_
+                {
+                };
+
+                template <typename... Set, typename T>
+                struct insert_back_<list<Set...>, T>
+                {
+                    using type = if_<in_<list<Set...>, T>, list<Set...>, list<Set..., T>>;
+                };
+            } // namespace meta_detail
             /// \endcond
 
-            /// Return a new \c meta::list where all duplicate elements
-            /// have been removed.
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            // unique
+            /// Return a new \c meta::list where all duplicate elements have been removed.
             /// \par Complexity
             /// \f$ O(N^2) \f$.
             /// \ingroup group-meta
-            template<typename List>
-            using unique = eval<meta_detail::unique_<List, list<>>>;
+            template <typename List>
+            using unique = fold<List, list<>, quote_trait<meta_detail::insert_back_>>;
 
             namespace lazy
             {
-                template<typename List>
+                /// \sa 'meta::unique'
+                /// \ingroup group-meta
+                template <typename List>
                 using unique = defer<unique, List>;
             }
 
@@ -1091,90 +1519,51 @@ namespace ranges
                 using replace_if = defer<replace_if, C, U>;
             }
 
-            ////////////////////////////////////////////////////////////////////////////////////
-            // foldl
-            /// \cond
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // count
             namespace meta_detail
             {
-                template<typename, typename, typename, typename = void>
-                struct foldl_
-                {};
-
-                template<typename State, typename Fun>
-                struct foldl_<list<>, State, Fun>
-                {
-                    using type = State;
-                };
-
-                template<typename Head, typename ...List, typename State, typename Fun>
-                struct foldl_<list<Head, List...>, State, Fun, void_<apply<Fun, State, Head>>>
-                  : foldl_<list<List...>, apply<Fun, State, Head>, Fun>
-                {};
+                template<typename State, typename Val, typename T>
+                using count_fn = if_<std::is_same<Val, T>, inc<State>, State>;
             }
-            /// \endcond
 
-            /// Return a new \c meta::list constructed by doing a left fold
-            /// of the list \p List using binary Metafunction Class \p Fun and
-            /// initial state \p State.
+            /// Count the number of times a type \p T appears in the list \p List.
             /// \par Complexity
             /// \f$ O(N) \f$.
-            /// \ingroup group-meta
-            template<typename List, typename State, typename Fun>
-            using foldl = eval<meta_detail::foldl_<List, State, Fun>>;
-
-            /// An alias for `meta::foldl`.
-            /// \par Complexity
-            /// \f$ O(N) \f$.
-            /// \ingroup group-meta
-            template<typename List, typename State, typename Fun>
-            using accumulate = foldl<List, State, Fun>;
+            template<typename List, typename T>
+            using count = fold<List, meta::size_t<0>, bind_back<quote<meta_detail::count_fn>, T>>;
 
             namespace lazy
             {
-                template<typename List, typename State, typename Fun>
-                using foldl = defer<foldl, List, State, Fun>;
-
-                template<typename List, typename State, typename Fun>
-                using accumulate = defer<accumulate, List, State, Fun>;
+                /// \sa `meta::count`
+                /// \ingroup group-meta
+                template<typename List, typename T>
+                using count = defer<count, List, T>;
             }
 
-            ////////////////////////////////////////////////////////////////////////////////////
-            // foldr
-            /// \cond
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // count_if
             namespace meta_detail
             {
-                template<typename, typename, typename, typename = void>
-                struct foldr_
-                {};
-
-                template<typename State, typename Fun>
-                struct foldr_<list<>, State, Fun>
-                {
-                    using type = State;
-                };
-
-                template<typename Head, typename ...List, typename State, typename Fun>
-                struct foldr_<list<Head, List...>, State, Fun, void_<eval<foldr_<list<List...>, State, Fun>>>>
-                  : lazy_apply<Fun, eval<foldr_<list<List...>, State, Fun>>, Head>
-                {};
+                template<typename State, typename Val, typename Fn>
+                using count_if_fn = if_<apply<Fn, Val>, inc<State>, State>;
             }
-            /// \endcond
 
-            /// Return a new \c meta::list constructed by doing a right fold
-            /// of the list \p List using binary Metafunction Class \p Fun and
-            /// initial state \p State.
+            /// Count the number of times the predicate \p Fn evaluates to true for all the
+            /// elements in the list \p List.
             /// \par Complexity
             /// \f$ O(N) \f$.
-            /// \ingroup group-meta
-            template<typename List, typename State, typename Fun>
-            using foldr = eval<meta_detail::foldr_<List, State, Fun>>;
+            template<typename List, typename Fn>
+            using count_if =
+                fold<List, meta::size_t<0>, bind_back<quote<meta_detail::count_if_fn>, Fn>>;
 
             namespace lazy
             {
-                template<typename List, typename State, typename Fun>
-                using foldr = defer<foldr, List, State, Fun>;
+                /// \sa `meta::count_if`
+                /// \ingroup group-meta
+                template<typename List, typename Fn>
+                using count_if = defer<count_if, List, Fn>;
             }
-            /// @}
 
             ////////////////////////////////////////////////////////////////////////////////////
             // transform
@@ -1235,7 +1624,57 @@ namespace ranges
                 using transform = defer<transform, Args...>;
             }
 
-            ////////////////////////////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // filter
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename Predicate>
+                struct filter_
+                {
+                    template<typename State, typename A>
+                    using apply = if_<apply<Predicate, A>, push_back<State, A>, State>;
+                };
+            } // namespace detail
+            /// \endcond
+
+            /// Returns a new meta::list where only those elements of \p List A that satisfy the
+            /// Metafunction Class \p Predicate such that `apply<Pred,A>::%value` is \c true are
+            /// present. That is, those elements that don't satisfy the \p Predicate are "removed".
+            template<typename List, typename Predicate>
+            using filter = fold<List, list<>, meta_detail::filter_<Predicate>>;
+
+            namespace lazy
+            {
+                template<typename List, typename Predicate>
+                using filter = defer<filter, List, Predicate>;
+            }
+
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // for_each
+            /// \cond
+            namespace meta_detail
+            {
+                struct for_each_fn
+                {
+                    template<class UnaryFunction, class... Args>
+                    constexpr auto operator()(list<Args...>, UnaryFunction f) const
+                        -> UnaryFunction
+                    {
+                        return (void)std::initializer_list<int>{(f(Args{}), void(), 0)...}, f;
+                    }
+                };
+            } // namespace meta_detail
+            /// \endcond
+
+            namespace
+            {
+                /// `for_each(List, UnaryFunction)` calls the \p UnaryFunction for each
+                /// argument in the \p List.
+                constexpr auto &&for_each = static_const<meta_detail::for_each_fn>::value;
+            }
+
+            ///////////////////////////////////////////////////////////////////////////////////////
             // zip_with
             /// Given a list of lists \p ListOfLists of types and a Metafunction Class \p Fun,
             /// construct a new list by calling \p Fun with the elements from the lists
@@ -1247,7 +1686,7 @@ namespace ranges
             template<typename Fun, typename ListOfLists>
             using zip_with =
                 transform<
-                    foldl<
+                    fold<
                         ListOfLists,
                         repeat_n<size<front<ListOfLists>>, Fun>,
                         bind_back<quote<transform>, quote<bind_front>>>,
@@ -1289,7 +1728,7 @@ namespace ranges
                 // http://open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#1430
                 template<typename Sequence>
                 struct as_list_
-                  : lazy_apply<uncurry<curry<quote_trait<id>>>, uncvref_t<Sequence>>
+                  : lazy::apply<uncurry<curry<quote_trait<id>>>, uncvref_t<Sequence>>
                 {};
             }
             /// \endcond
@@ -1298,7 +1737,7 @@ namespace ranges
             /// @{
 
             /// Turn a type into an instance of \c meta::list in a way
-            /// determined by \c meta::lazy_apply_list.
+            /// determined by \c meta::apply_list.
             template<typename Sequence>
             using as_list = eval<meta_detail::as_list_<Sequence>>;
 
@@ -1315,7 +1754,7 @@ namespace ranges
             /// \par Complexity
             /// \f$ O(N) \f$.
             template<typename List>
-            using reverse = foldr<List, list<>, quote<push_back>>;
+            using reverse = reverse_fold<List, list<>, quote<push_back>>;
 
             namespace lazy
             {
@@ -1374,6 +1813,13 @@ namespace ranges
             /// \cond
             namespace meta_detail
             {
+                template<typename T, int = 0>
+                struct protect;
+
+                // Returns which branch to evaluate
+                template<typename If, typename ...Ts>
+                using lazy_if_ = lazy::eval<defer<_if_, If, protect<Ts>...>>;
+
                 template<int, typename...As>
                 struct lambda_
                 {
@@ -1381,40 +1827,51 @@ namespace ranges
                     static constexpr std::size_t arity = sizeof...(As) - 1;
                     using Tags = list<As...>; // Includes the lambda body as the last arg!
                     using F = back<Tags>;
-                    template<typename T, typename Args, typename Pos = find<Tags, T>>
-                    struct impl2
-                    {
-                        using type = list_element_c<(Tags::size() - Pos::size()), Args>;
-                    };
+                    template<typename T, typename Args> struct impl;
                     template<typename T, typename Args>
-                    struct impl2<T, Args, list<>>
-                    {
-                        using type = T;
-                    };
-                    template<typename T, typename Args, typename = void>
-                    struct impl : impl2<T, Args>
+                    using lazy_impl_ = lazy::eval<defer<impl, T, protect<Args>>>;
+                    template<typename, typename, typename = void>
+                    struct impl_
                     {};
                     template<template<typename...> class C, typename...Ts, typename Args>
-                    struct impl<defer<C, Ts...>, Args, void_<C<eval<impl<Ts, Args>>...>>>
-                    {
-                        using type = C<eval<impl<Ts, Args>>...>;
-                    };
+                    struct impl_<defer<C, Ts...>, Args, void_<C<eval<impl<Ts, Args>>...>>>
+                      : id<C<eval<impl<Ts, Args>>...>>
+                    {};
+                    template<typename T, typename Args>
+                    struct impl
+                      : if_<in<Tags, T>, lazy::at<Args, reverse_find_index<Tags, T>>, id<T>>
+                    {};
+                    template<typename T, typename Args>
+                    struct impl<protect<T>, Args> : id<T>
+                    {};
+                    template<typename If, typename ...Ts, typename Args>
+                    struct impl<defer<if_, If, Ts...>, Args> // Short-circuit if_
+                      : impl<lazy_impl_<lazy_if_<If, Ts...>, Args>, Args>
+                    {};
+                    template<typename Bool, typename ...Ts, typename Args>
+                    struct impl<defer<and_, Bool, Ts...>, Args> // Short-circuit and_
+                      : impl<lazy_impl_<lazy_if_<Bool, lazy::and_<Ts...>, protect<std::false_type>>,
+                            Args>, Args>
+                    {};
+                    template<typename Bool, typename ...Ts, typename Args>
+                    struct impl<defer<or_, Bool, Ts...>, Args> // Short-circuit or_
+                      : impl<lazy_impl_<lazy_if_<Bool, protect<std::true_type>, lazy::or_<Ts...>>,
+                            Args>, Args>
+                    {};
+                    template<template<typename...> class C, typename...Ts, typename Args>
+                    struct impl<defer<C, Ts...>, Args> : impl_<defer<C, Ts...>, Args>
+                    {};
+                    template<template<typename...> class C, typename...Ts, typename Args>
+                    struct impl<C<Ts...>, Args> : impl_<defer<C, Ts...>, Args>
+                    {};
                     template<int N, typename...Ts, typename Args>
                     struct impl<lambda_<N, Ts...>, Args>
-                    {
-                        using type = impl;
-                        template<typename...Us>
-                        using apply =
-                            apply_list<lambda_<0, As..., Ts...>, concat<Args, list<Us...>>>;
-                    };
-                    template<template<typename...> class C, typename...Ts, typename Args>
-                    struct impl<C<Ts...>, Args, void_<C<eval<impl<Ts, Args>>...>>>
-                    {
-                        using type = C<eval<impl<Ts, Args>>...>;
-                    };
+                      : id<compose<uncurry<lambda_<0, As..., Ts...>>,
+                            curry<bind_front<quote<concat>, Args>>>>
+                    {};
                 public:
                     template<typename...Ts>
-                    using apply = eval<if_c<sizeof...(Ts) == arity, impl<F, list<Ts..., void>>>>;
+                    using apply = eval<if_c<sizeof...(Ts) == arity, impl<F, list<Ts..., F>>>>;
                 };
             }
             /// \endcond
@@ -1430,10 +1887,68 @@ namespace ranges
             template<typename...Ts>
             using lambda = meta_detail::lambda_<0, Ts...>;
 
-            // Some argument placeholders for use in \c lambda expressions.
-            struct _a; struct _b; struct _c;
-            struct _d; struct _e; struct _f;
-            struct _g; struct _h; struct _i;
+            //template<typename...Ts>
+            //using lambda2 = meta_detail::lambda2_<0, Ts...>;
+
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // let
+            /// For use when defining local variables in \c meta::let expressions
+            /// \sa `meta::let`
+            template<typename Tag, typename Value>
+            struct var;
+
+            /// \cond
+            namespace meta_detail
+            {
+                template<typename...As>
+                struct let_
+                {};
+                template<typename Fn>
+                struct let_<Fn>
+                {
+                    using type = lazy::apply<lambda<Fn>>;
+                };
+                template<typename Tag, typename Value, typename...Rest>
+                struct let_<var<Tag, Value>, Rest...>
+                {
+                    using type = lazy::apply<lambda<Tag, eval<let_<Rest...>>>, Value>;
+                };
+            }
+            /// \endcond
+
+            /// A lexically scoped expression with local variables.
+            ///
+            /// \code
+            /// template<typename T, typename List>
+            /// using find_index_ = let<
+            ///     var<_a, List>,
+            ///     var<_b, lazy::find<_a, T>>,
+            ///     lazy::if_<
+            ///         std::is_same<_b, list<>>,
+            ///         meta::npos,
+            ///         lazy::minus<lazy::size<_a>, lazy::size<_b>>>>;
+            /// static_assert(find_index_<int, list<short, int, float>>{} == 1, "");
+            /// static_assert(find_index_<double, list<short, int, float>>{} == meta::npos{}, "");
+            /// \endcode
+            /// \ingroup group-meta
+            template<typename...As>
+            using let = eval<eval<meta_detail::let_<As...>>>;
+
+            namespace lazy
+            {
+                /// \sa `meta::let`
+                /// \ingroup group-meta
+                template<typename...As>
+                using let = defer<let, As...>;
+            }
+
+            inline namespace placeholders
+            {
+                // Some argument placeholders for use in \c lambda and \c let expressions.
+                struct _a; struct _b; struct _c;
+                struct _d; struct _e; struct _f;
+                struct _g; struct _h; struct _i;
+            }
 
             ////////////////////////////////////////////////////////////////////////////////////
             // cartesian_product
@@ -1462,7 +1977,7 @@ namespace ranges
             /// \f$ M \f$ is the size of the inner lists.
             template<typename ListOfLists>
             using cartesian_product =
-                foldr<ListOfLists, list<list<>>, quote_trait<meta_detail::cartesian_product_fn>>;
+                reverse_fold<ListOfLists, list<list<>>, quote_trait<meta_detail::cartesian_product_fn>>;
 
             namespace lazy
             {
@@ -1480,141 +1995,23 @@ namespace ranges
             using add_const_if_c = if_c<If, quote_trait<std::add_const>, quote_trait<id>>;
             /// \endcond
 
-            ////////////////////////////////////////////////////////////////////////////////////
-            // Math operations
-            /// An integral constant wrapper around the result of adding the
-            /// two wrapped integers \c T::type::value and \c U::type::value.
+            /// An integral constant wrapper around the minimum of \c T::type::value
+            /// and \c U::type::value
             template<typename T, typename U>
-            using plus = std::integral_constant<decltype(T::type::value + U::type::value), T::type::value + U::type::value>;
+            using min = if_<less<U, T>, U, T>;
 
-            /// An integral constant wrapper around the result of subtracting the
-            /// two wrapped integers \c T::type::value and \c U::type::value.
+            /// An integral constant wrapper around the maximum of \c T::type::value
+            /// and \c U::type::value
             template<typename T, typename U>
-            using minus = std::integral_constant<decltype(T::type::value - U::type::value), T::type::value - U::type::value>;
-
-            /// An integral constant wrapper around the result of multiplying the
-            /// two wrapped integers \c T::type::value and \c U::type::value.
-            template<typename T, typename U>
-            using multiplies = std::integral_constant<decltype(T::type::value * U::type::value), T::type::value * U::type::value>;
-
-            /// An integral constant wrapper around the result of dividing the
-            /// two wrapped integers \c T::type::value and \c U::type::value.
-            template<typename T, typename U>
-            using divides = std::integral_constant<decltype(T::type::value / U::type::value), T::type::value / U::type::value>;
-
-            /// An integral constant wrapper around the remainder of dividing the
-            /// two wrapped integers \c T::type::value and \c U::type::value.
-            template<typename T>
-            using negate = std::integral_constant<decltype(-T::type::value), -T::type::value>;
-
-            /// An integral constant wrapper around the remainder of dividing the
-            /// two wrapped integers \c T::type::value and \c U::type::value.
-            template<typename T, typename U>
-            using modulus = std::integral_constant<decltype(T::type::value % U::type::value), T::type::value % U::type::value>;
-
-            /// A Boolean integral constant wrapper around the result of comparing
-            /// \c T::type::value and \c U::type::value for equality.
-            template<typename T, typename U>
-            using equal_to = bool_<T::type::value == U::type::value>;
-
-            /// A Boolean integral constant wrapper around the result of comparing
-            /// \c T::type::value and \c U::type::value for inequality.
-            template<typename T, typename U>
-            using not_equal_to = bool_<T::type::value != U::type::value>;
-
-            /// A Boolean integral constant wrapper around \c true if
-            /// \c T::type::value is greater than \c U::type::value; \c false, otherwise.
-            template<typename T, typename U>
-            using greater = bool_<(T::type::value > U::type::value)>;
-
-            /// A Boolean integral constant wrapper around \c true if
-            /// \c T::type::value is less than \c U::type::value; \c false, otherwise.
-            template<typename T, typename U>
-            using less = bool_<(T::type::value < U::type::value)>;
-
-            /// A Boolean integral constant wrapper around \c true if
-            /// \c T::type::value is greater than or equal to \c U::type::value; \c false,
-            /// otherwise.
-            template<typename T, typename U>
-            using greater_equal = bool_<(T::type::value >= U::type::value)>;
-
-            /// A Boolean integral constant wrapper around \c true if
-            /// \c T::type::value is less than or equal to \c U::type::value; \c false,
-            /// otherwise.
-            template<typename T, typename U>
-            using less_equal = bool_<(T::type::value <= U::type::value)>;
-
-            /// An integral constant wrapper around the result of bitwise-and'ing
-            /// the two wrapped integers \c T::type::value and \c U::type::value.
-            template<typename T, typename U>
-            using bit_and = std::integral_constant<decltype(T::type::value & U::type::value), T::type::value & U::type::value>;
-
-            /// An integral constant wrapper around the result of bitwise-or'ing
-            /// the two wrapped integers \c T::type::value and \c U::type::value.
-            template<typename T, typename U>
-            using bit_or = std::integral_constant<decltype(T::type::value | U::type::value), T::type::value | U::type::value>;
-
-            /// An integral constant wrapper around the result of
-            /// bitwise-exclusive-or'ing the two wrapped integers \c T::type::value and
-            /// \c U::type::value.
-            template<typename T, typename U>
-            using bit_xor = std::integral_constant<decltype(T::type::value ^ U::type::value), T::type::value ^ U::type::value>;
-
-            /// An integral constant wrapper around the result of
-            /// bitwise-complimenting the wrapped integer \c T::type::value.
-            template<typename T>
-            using bit_not = std::integral_constant<decltype(~T::type::value), ~T::type::value>;
-            /// @}
+            using max = if_<less<U, T>, T, U>;
 
             namespace lazy
             {
                 template<typename T, typename U>
-                using plus = defer<plus, T, U>;
+                using max = defer<max, T, U>;
 
                 template<typename T, typename U>
-                using minus = defer<minus, T, U>;
-
-                template<typename T, typename U>
-                using multiplies = defer<multiplies, T, U>;
-
-                template<typename T, typename U>
-                using divides = defer<divides, T, U>;
-
-                template<typename T>
-                using negate = defer<negate, T>;
-
-                template<typename T, typename U>
-                using modulus = defer<modulus, T, U>;
-
-                template<typename T, typename U>
-                using equal_to = defer<equal_to, T, U>;
-
-                template<typename T, typename U>
-                using not_equal_to = defer<not_equal_to, T, U>;
-
-                template<typename T, typename U>
-                using greater = defer<greater, T, U>;
-
-                template<typename T, typename U>
-                using less = defer<less, T, U>;
-
-                template<typename T, typename U>
-                using greater_equal = defer<greater_equal, T, U>;
-
-                template<typename T, typename U>
-                using less_equal = defer<less_equal, T, U>;
-
-                template<typename T, typename U>
-                using bit_and = defer<bit_and, T, U>;
-
-                template<typename T, typename U>
-                using bit_or = defer<bit_or, T, U>;
-
-                template<typename T, typename U>
-                using bit_xor = defer<bit_xor, T, U>;
-
-                template<typename T>
-                using bit_not = defer<bit_not, T>;
+                using min = defer<min, T, U>;
             }
         }
     }
@@ -1630,27 +2027,27 @@ namespace ranges
     !defined(RANGES_NO_STD_FORWARD_DECLARACTIONS)
 
 _LIBCPP_BEGIN_NAMESPACE_STD
-    template <class, class> struct _LIBCPP_TYPE_VIS_ONLY pair;
-    template <class> struct _LIBCPP_TYPE_VIS_ONLY hash;
-    template <class> struct _LIBCPP_TYPE_VIS_ONLY less;
-    template <class> struct _LIBCPP_TYPE_VIS_ONLY equal_to;
-    template <class> struct _LIBCPP_TYPE_VIS_ONLY char_traits;
-    template <class, class> class _LIBCPP_TYPE_VIS_ONLY list;
-    template <class, class> class _LIBCPP_TYPE_VIS_ONLY forward_list;
-    template <class, class> class _LIBCPP_TYPE_VIS_ONLY vector;
-    template <class, class> class _LIBCPP_TYPE_VIS_ONLY deque;
-    template <class, class, class> class _LIBCPP_TYPE_VIS_ONLY basic_string;
-    template <class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY map;
-    template <class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY multimap;
-    template <class, class, class> class _LIBCPP_TYPE_VIS_ONLY set;
-    template <class, class, class> class _LIBCPP_TYPE_VIS_ONLY multiset;
-    template <class, class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_map;
-    template <class, class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_multimap;
-    template <class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_set;
-    template <class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_multiset;
-    template <class, class> class _LIBCPP_TYPE_VIS_ONLY queue;
-    template <class, class, class> class _LIBCPP_TYPE_VIS_ONLY priority_queue;
-    template <class, class> class _LIBCPP_TYPE_VIS_ONLY stack;
+    template<class, class> struct _LIBCPP_TYPE_VIS_ONLY pair;
+    template<class> struct _LIBCPP_TYPE_VIS_ONLY hash;
+    template<class> struct _LIBCPP_TYPE_VIS_ONLY less;
+    template<class> struct _LIBCPP_TYPE_VIS_ONLY equal_to;
+    template<class> struct _LIBCPP_TYPE_VIS_ONLY char_traits;
+    template<class, class> class _LIBCPP_TYPE_VIS_ONLY list;
+    template<class, class> class _LIBCPP_TYPE_VIS_ONLY forward_list;
+    template<class, class> class _LIBCPP_TYPE_VIS_ONLY vector;
+    template<class, class> class _LIBCPP_TYPE_VIS_ONLY deque;
+    template<class, class, class> class _LIBCPP_TYPE_VIS_ONLY basic_string;
+    template<class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY map;
+    template<class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY multimap;
+    template<class, class, class> class _LIBCPP_TYPE_VIS_ONLY set;
+    template<class, class, class> class _LIBCPP_TYPE_VIS_ONLY multiset;
+    template<class, class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_map;
+    template<class, class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_multimap;
+    template<class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_set;
+    template<class, class, class, class> class _LIBCPP_TYPE_VIS_ONLY unordered_multiset;
+    template<class, class> class _LIBCPP_TYPE_VIS_ONLY queue;
+    template<class, class, class> class _LIBCPP_TYPE_VIS_ONLY priority_queue;
+    template<class, class> class _LIBCPP_TYPE_VIS_ONLY stack;
 _LIBCPP_END_NAMESPACE_STD
 
 namespace ranges
